@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "336881946339",
+    "project_id": "wcc-scheduling",
+    "storage_bucket": "wcc-scheduling.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:336881946339:android:dc06dfeb4587b2ae9a7fd6",
+        "android_client_info": {
+          "package_name": "com.wcc.croissant"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "336881946339-tv56g13icgc88hoafb739vlnvaa2a3sh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wcc.croissant",
+            "certificate_hash": "b137d47b305f6ff578909197eb59550f17d968cc"
+          }
+        },
+        {
+          "client_id": "336881946339-ke5vo370opa4gdfcbt39d6v4vp6fe8n4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhr5zuYqIpnzCyZ3-RHzE5Te0_yqYcipY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "336881946339-ke5vo370opa4gdfcbt39d6v4vp6fe8n4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
