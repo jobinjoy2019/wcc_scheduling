@@ -15,6 +15,10 @@ class ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     final formatted = DateFormat('EEE, MMM d').format(date);
 
     return FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
@@ -29,13 +33,11 @@ class ScheduleCard extends StatelessWidget {
           hasAssignments = ScheduleUtils.hasAnyFunctionAssigned(teamStatus);
         }
 
-        // Light red accent shade if hasAssignments
-        final backgroundColor = hasAssignments
-            ? const Color(0xFF2A2A3D)
-                .withGreen(150)
-                .withBlue(136)
-                .withAlpha(150)
-            : const Color(0xFF2A2A3D);
+        // Use theme surface + overlay blend for highlighting
+        final baseColor = colorScheme.surface;
+        final highlightColor = hasAssignments
+            ? colorScheme.tertiary.withAlpha(100)
+            : baseColor;
 
         return GestureDetector(
           onTap: () {
@@ -51,12 +53,18 @@ class ScheduleCard extends StatelessWidget {
             }
           },
           child: Container(
-            width: 140, // Reduced width from 160
+            width: 140,
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
             decoration: BoxDecoration(
-              color: backgroundColor,
+              color: highlightColor,
               borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: hasAssignments
+                    ? colorScheme.outlineVariant
+                    : colorScheme.secondary,
+                width: 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,30 +76,35 @@ class ScheduleCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         formatted,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontSize: 15,
+                          color: colorScheme.onSurface,
                         ),
                       ),
                     ),
                     if (isLoading)
-                      const SizedBox(
+                      SizedBox(
                         height: 18,
                         width: 18,
                         child: CircularProgressIndicator(
-                          color: Colors.white,
+                          color: colorScheme.onSurface,
                           strokeWidth: 2,
                         ),
                       )
                     else if (hasError)
-                      const Icon(Icons.error, color: Colors.red, size: 18)
+                      Icon(
+                        Icons.error,
+                        color: colorScheme.error,
+                        size: 18,
+                      )
                     else
                       Icon(
                         hasAssignments
                             ? Icons.check_circle
                             : Icons.warning_amber_rounded,
-                        color: hasAssignments ? Colors.green : Colors.amber,
+                        color: hasAssignments
+                            ? colorScheme.tertiary
+                            : colorScheme.secondary,
                         size: 18,
                       ),
                   ],
@@ -100,10 +113,9 @@ class ScheduleCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     isLoading ? 'Loading...' : 'Error loading',
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
-                      fontSize: 13,
                     ),
                   ),
                 ],

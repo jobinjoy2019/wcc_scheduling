@@ -34,7 +34,9 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
       final functions = data['functions'] as List<dynamic>?;
 
       if (functions != null && functions.isNotEmpty) {
-        if (response == null || response.isEmpty || response.toLowerCase() == "pending") {
+        if (response == null ||
+            response.isEmpty ||
+            response.toLowerCase() == "pending") {
           final service = data['service'] as String?;
           pendingRequests.add({
             'date': doc.id,
@@ -75,15 +77,24 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
     );
 
     if (mounted) {
-      setState(() {}); 
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Response updated: $response')),
+        SnackBar(
+          content: Text(
+            'Response updated: $response',
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.surface,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _loadPendingRequests(),
       builder: (context, snapshot) {
@@ -94,9 +105,11 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
         final pending = snapshot.data ?? [];
 
         if (pending.isEmpty) {
-          return const Text(
+          return Text(
             'No pending requests.',
-            style: TextStyle(color: Colors.white70),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
           );
         }
 
@@ -109,13 +122,14 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
                 : '';
             serviceLanguageforday = service ?? '';
             final displayDate = DateFormat('yyyy-MM-dd').parse(dateStr);
-            final formattedDate = DateFormat('EEEE, MMM d, yyyy').format(displayDate);
+            final formattedDate =
+                DateFormat('EEEE, MMM d, yyyy').format(displayDate);
 
             return Container(
               margin: const EdgeInsets.symmetric(vertical: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF2A2A3D),
+                color: colorScheme.surfaceVariant.withAlpha(220),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -127,15 +141,17 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
                       Expanded(
                         child: Text(
                           formattedDate,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                       Text(
                         'Service: ${service ?? 'Not set'}',
-                        style: const TextStyle(color: Colors.white70),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -144,15 +160,16 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _updateUserResponse(dateStr, 'accepted'),
+                          onPressed: () =>
+                              _updateUserResponse(dateStr, 'accepted'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
+                            backgroundColor: colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            textStyle: const TextStyle(fontSize: 14),
+                            textStyle: theme.textTheme.labelLarge,
                           ),
                           child: const Text('Accept'),
                         ),
@@ -160,15 +177,16 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _updateUserResponse(dateStr, 'declined'),
+                          onPressed: () =>
+                              _updateUserResponse(dateStr, 'declined'),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                            foregroundColor: Colors.white,
+                            backgroundColor: colorScheme.error,
+                            foregroundColor: colorScheme.onError,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            textStyle: const TextStyle(fontSize: 14),
+                            textStyle: theme.textTheme.labelLarge,
                           ),
                           child: const Text('Decline'),
                         ),
@@ -177,16 +195,20 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () => _updateUserResponse(dateStr, 'swap'),
-                          icon: const Icon(Icons.swap_horiz, size: 16, color: Colors.white),
-                          label: const Text('Swap'),
+                          icon: Icon(Icons.swap_horiz,
+                              size: 16, color: colorScheme.onSecondary),
+                          label: Text(
+                            'Swap',
+                            style: TextStyle(color: colorScheme.onSecondary),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
+                            backgroundColor: colorScheme.secondary,
+                            foregroundColor: colorScheme.onSecondary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            textStyle: const TextStyle(fontSize: 14),
+                            textStyle: theme.textTheme.labelLarge,
                           ),
                         ),
                       ),

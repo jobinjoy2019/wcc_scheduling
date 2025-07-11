@@ -39,7 +39,6 @@ class DeleteScheduleButton extends StatelessWidget {
         final data = userScheduleSnap.data() ?? {};
         final userService = data['service'];
 
-        // ✅ Only proceed if the service matches
         if (userService == serviceLanguage) {
           final hasFunctions = (data['functions'] is List &&
               (data['functions'] as List).isNotEmpty);
@@ -65,7 +64,10 @@ class DeleteScheduleButton extends StatelessWidget {
             SnackBar(
               content: Text(
                 'Cleared $serviceLanguage schedule for selected day.',
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
+              backgroundColor: Theme.of(context).colorScheme.surface,
             ),
           );
         }
@@ -75,7 +77,10 @@ class DeleteScheduleButton extends StatelessWidget {
             SnackBar(
               content: Text(
                 'No $serviceLanguage schedule found to clear.',
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
+              backgroundColor: Theme.of(context).colorScheme.surface,
             ),
           );
         }
@@ -83,7 +88,13 @@ class DeleteScheduleButton extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error clearing schedule: $e')),
+          SnackBar(
+            content: Text(
+              'Error clearing schedule: $e',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.surface,
+          ),
         );
       }
     }
@@ -91,19 +102,24 @@ class DeleteScheduleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return ElevatedButton.icon(
       onPressed: date != null ? () => _clearScheduleForDate(context) : null,
-      icon: const Icon(
+      icon: Icon(
         FontAwesomeIcons.trash,
-        color: Colors.black87,
+        color: colorScheme.onError,
         size: 18,
       ),
-      label: const Text('Delete'),
+      label: Text(
+        'Delete',
+        style: TextStyle(color: colorScheme.onError),
+      ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color.fromARGB(255, 223, 138, 138),
-        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.error,
+        foregroundColor: colorScheme.onError,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8), // Rounded corners
+          borderRadius: BorderRadius.circular(8),
         ),
         padding: const EdgeInsets.symmetric(vertical: 12),
       ),

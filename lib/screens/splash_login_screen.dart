@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:scheduler_app/widgets/appbar.dart';
+
 
 class SplashLoginScreen extends StatefulWidget {
   const SplashLoginScreen({super.key});
@@ -95,12 +97,17 @@ class _SplashLoginScreenState extends State<SplashLoginScreen>
           .doc(user.uid)
           .get();
       final roles = List<String>.from(doc.data()?['roles'] ?? []);
+      final defaultRole =
+          (await DefaultRoleService.getDefaultRole())?.toLowerCase();
+      final rolesLower = roles.map((e) => e.toLowerCase()).toList();
 
       if (!mounted) return;
 
-      if (roles.contains('Admin')) {
+      if (defaultRole != null && rolesLower.contains(defaultRole)) {
+        Navigator.pushReplacementNamed(context, '/$defaultRole');
+      } else if (rolesLower.contains('admin')) {
         Navigator.pushReplacementNamed(context, '/admin');
-      } else if (roles.contains('Leader')) {
+      } else if (rolesLower.contains('leader')) {
         Navigator.pushReplacementNamed(context, '/leader');
       } else {
         Navigator.pushReplacementNamed(context, '/members');

@@ -43,7 +43,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       final uid = userDoc['uid'];
       final functions = List<String>.from(userDoc['functions'] ?? []);
 
-      // Check user's schedule for this date
       final scheduleDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -57,10 +56,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           (data?['functions'] as List).isNotEmpty);
 
       if (isBlockedOut || hasFunctions) {
-        continue; // skip this user
+        continue;
       }
 
-      // Add to their functions
       for (final func in functions) {
         if (functionOrder.contains(func)) {
           availableByFunction[func]!.add(userDoc);
@@ -86,8 +84,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final formattedDate = DateFormat('yyyy-MM-dd').format(scheduleDate);
 
     final batch = FirebaseFirestore.instance.batch();
-
-    // Map each userId to their selected functions
     final Map<String, List<String>> userFunctionsMap = {};
 
     for (final entry in selectedUsersByFunction.entries) {
@@ -98,7 +94,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }
     }
 
-    // For each user, overwrite their schedule for the selected date
     for (final entry in userFunctionsMap.entries) {
       final uid = entry.key;
       final functions = entry.value;
@@ -128,11 +123,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2C),
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E2C),
-        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
         title: const Text('Schedule'),
       ),
       body: ListView(
@@ -159,10 +156,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             selectedUsersByFunction.clear();
                           });
                         },
-                        // Make text *always* white
-                        color: Colors.white,
-                        selectedColor: Colors.white,
-                        fillColor: const Color(0xFF00AAAA),
+                        color: colorScheme.tertiary.withAlpha(178),
+                        selectedColor: colorScheme.onSurface,
+                        fillColor: colorScheme.tertiary,
                         constraints: BoxConstraints(
                           minHeight: 40,
                           minWidth: halfWidth,
@@ -178,9 +174,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
             ],
           ),
-          const Text(
+          const SizedBox(height: 16),
+          Text(
             'Select Week Date',
-            style: TextStyle(color: Colors.white, fontSize: 18),
+            style: TextStyle(color: colorScheme.onSurface, fontSize: 18),
           ),
           const SizedBox(height: 12),
           TableCalendar(
@@ -203,27 +200,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 }
               });
             },
-            calendarStyle: const CalendarStyle(
-              defaultTextStyle: TextStyle(color: Colors.white),
-              todayDecoration:
-                  BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-              selectedDecoration:
-                  BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+            calendarStyle: CalendarStyle(
+              defaultTextStyle: TextStyle(color: colorScheme.onSurface),
+              todayDecoration: BoxDecoration(
+                color: colorScheme.secondary,
+                shape: BoxShape.circle,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: colorScheme.primary,
+                shape: BoxShape.circle,
+              ),
             ),
-            headerStyle: const HeaderStyle(
+            headerStyle: HeaderStyle(
               formatButtonVisible: false,
-              titleTextStyle: TextStyle(color: Colors.white),
-              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white),
-              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
+              titleTextStyle: TextStyle(color: colorScheme.onSurface),
+              leftChevronIcon:
+                  Icon(Icons.chevron_left, color: colorScheme.onSurface),
+              rightChevronIcon:
+                  Icon(Icons.chevron_right, color: colorScheme.onSurface),
             ),
-            daysOfWeekStyle: const DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Colors.white70),
-              weekendStyle: TextStyle(color: Colors.redAccent),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle:
+                  TextStyle(color: colorScheme.onSurface.withAlpha(178)),
+              weekendStyle: TextStyle(color: colorScheme.error),
             ),
           ),
           const SizedBox(height: 16),
-
-          // Always show function names, users only if date selected
           ...functionOrder.map((function) {
             final users = functionUsers[function] ?? [];
             final selectedSet =
@@ -234,8 +236,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               children: [
                 Text(
                   function,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -265,9 +267,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             }
                           });
                         },
-                        selectedColor: Colors.green,
-                        checkmarkColor: Colors.white,
-                        labelStyle: const TextStyle(color: Colors.white),
+                        selectedColor: colorScheme.primary,
+                        checkmarkColor: colorScheme.onPrimary,
+                        labelStyle: TextStyle(color: colorScheme.onSurface),
                       );
                     }).toList(),
                   ),
@@ -275,7 +277,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ],
             );
           }),
-
           if (selectedDate != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -287,8 +288,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       icon: const Icon(Icons.save),
                       label: const Text('Save'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF009688),
-                        foregroundColor: Colors.white,
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
