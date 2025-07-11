@@ -128,7 +128,7 @@ class CustomScheduleCalendar extends StatelessWidget {
                     shape: BoxShape.rectangle,
                     borderRadius: BorderRadius.circular(8),
                   );
-                  dayTextStyle = TextStyle(color: colorScheme.onPrimary);
+                  dayTextStyle = TextStyle(color: colorScheme.onSurface);
                 } else if (highlightColor != null) {
                   dayDecoration = BoxDecoration(
                     color: highlightColor.withAlpha(200),

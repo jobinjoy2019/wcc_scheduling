@@ -172,8 +172,8 @@ class _ChurchAppBarState extends State<ChurchAppBar>
                 Text(
                   'Welcome ${_getFirstName(widget.name)}',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: colorScheme.onPrimary.withOpacity(0.8),
-                    fontWeight: FontWeight.w500,
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'; // For kDebugMode and debugPrint
 import 'app.dart'; // Assuming your main app widget is in app.dart
 import 'theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'firebase_options.dart';
 
 void main() {
   // Wrap the entire app initialization and run within runZonedGuarded
@@ -12,7 +13,9 @@ void main() {
     // Ensure Flutter binding is initialized before any Flutter-specific calls
     WidgetsFlutterBinding.ensureInitialized();
 
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
     // Run your main application widget
     runApp(ChangeNotifierProvider(
