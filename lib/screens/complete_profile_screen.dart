@@ -51,19 +51,15 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     final data = doc.data();
 
     if (data != null) {
-      // Only load firstName and lastName
       if (data['firstName'] is String && data['firstName'].trim().isNotEmpty) {
         _firstnameController.text = data['firstName'].trim();
       }
-
       if (data['lastName'] is String && data['lastName'].trim().isNotEmpty) {
         _lastnameController.text = data['lastName'].trim();
       }
-
       if (data['mobile'] is String && data['mobile'].trim().isNotEmpty) {
         _mobileController.text = data['mobile'].trim();
       }
-
       if (data['functions'] is List) {
         _selectedRoles.addAll(List<String>.from(data['functions']));
       }
@@ -92,9 +88,10 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
 
     if (trimmedFirstName.isEmpty || _selectedRoles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+        SnackBar(
+          content: const Text(
               'Please enter your first name and select at least one role.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
@@ -103,11 +100,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     setState(() => _saving = true);
 
     try {
-      // Update FirebaseAuth displayName
       await user.updateDisplayName(trimmedFirstName);
       await user.reload();
 
-      // Update Firestore document
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'firstName': trimmedFirstName,
         'lastName': trimmedLastName,
@@ -122,17 +117,27 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     } catch (e) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving profile: $e')),
+        SnackBar(
+          content: Text('Error saving profile: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
-            _email != null ? "Update Your Profile" : "Complete Your Profile"),
+          _email != null ? "Update Your Profile" : "Complete Your Profile",
+          style: TextStyle(color: colorScheme.onPrimary),
+        ),
+        backgroundColor: colorScheme.primary,
+        iconTheme: IconThemeData(color: colorScheme.onPrimary),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -143,31 +148,72 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   if (_email != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8.0),
-                      child: Text('Email: $_email',
-                          style: const TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'Email: $_email',
+                        style: TextStyle(
+                            color: colorScheme.onSurface.withAlpha(178)),
+                      ),
                     ),
-                  const Text("Enter your name", style: TextStyle(fontSize: 16)),
+                  Text("Enter your name",
+                      style: TextStyle(
+                          fontSize: 16, color: colorScheme.onSurface)),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _firstnameController,
-                    decoration: const InputDecoration(labelText: 'First Name'),
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: InputDecoration(
+                      labelText: 'First Name',
+                      labelStyle: TextStyle(
+                          color: colorScheme.onSurface.withAlpha(178)),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: colorScheme.onSurface.withAlpha(128)),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: colorScheme.primary),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _lastnameController,
-                    decoration: const InputDecoration(labelText: 'Last Name'),
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: InputDecoration(
+                      labelText: 'Last Name',
+                      labelStyle: TextStyle(
+                          color: colorScheme.onSurface.withAlpha(178)),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: colorScheme.onSurface.withAlpha(128)),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: colorScheme.primary),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _mobileController,
                     keyboardType: TextInputType.phone,
-                    decoration:
-                        const InputDecoration(labelText: 'Mobile Number'),
+                    style: TextStyle(color: colorScheme.onSurface),
+                    decoration: InputDecoration(
+                      labelText: 'Mobile Number',
+                      labelStyle: TextStyle(
+                          color: colorScheme.onSurface.withAlpha(178)),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(
+                            color: colorScheme.onSurface.withAlpha(128)),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: colorScheme.primary),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 30),
-                  const Text(
+                  Text(
                     "Select your roles (you can pick more than one):",
-                    style: TextStyle(fontSize: 16),
+                    style:
+                        TextStyle(fontSize: 16, color: colorScheme.onSurface),
                   ),
                   const SizedBox(height: 10),
                   Wrap(
@@ -175,11 +221,13 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                     children: ScheduleUtils.functionOrder.map((role) {
                       final selected = _selectedRoles.contains(role);
                       return FilterChip(
-                        label: Text(role),
+                        label: Text(role,
+                            style: TextStyle(color: colorScheme.onSurface)),
                         selected: selected,
                         onSelected: (_) => _toggleRole(role),
-                        selectedColor: Colors.deepPurple,
-                        checkmarkColor: Colors.white,
+                        selectedColor: colorScheme.primary,
+                        checkmarkColor: colorScheme.onPrimary,
+                        backgroundColor: colorScheme.surfaceVariant,
                       );
                     }).toList(),
                   ),
@@ -187,18 +235,21 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   ElevatedButton(
                     onPressed: _saving ? null : _submitProfile,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6F7CEF),
-                      foregroundColor: Colors.white,
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: colorScheme.onPrimary,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _saving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  colorScheme.onPrimary),
+                            ),
                           )
                         : const Text("Save and Continue"),
                   ),

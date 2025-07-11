@@ -166,202 +166,226 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
     await _loadMemberCalendarData();
   }
 
+  Future<void> _refreshDashboard() async {
+    // For example
+    await Future.wait([
+      _fetchUserFunctions(),
+      _loadMemberCalendarData(),
+    ]);
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final now = DateTime.now();
     final upcomingSunday = now.add(Duration(days: (7 - now.weekday) % 7));
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2C),
+      backgroundColor: colorScheme.surface,
       appBar: ChurchAppBar(
           name: displayName, roles: userRoles, currentRole: currentRole),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 24),
-              const Text(
-                'Upcoming Schedule',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 4,
-                  itemBuilder: (context, index) {
-                    final date = upcomingSunday.add(Duration(days: 7 * index));
-                    final cleanDate = _cleanDate(date);
-
-                    return FutureBuilder<String?>(
-                      future: _getUserServiceForDate(cleanDate),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const SizedBox(
-                            width: 200,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        final String? serviceLanguage = snapshot.data;
-
-                        return ScheduleCard(
-                          date: cleanDate,
-                          scheduleFuture:
-                              _getScheduleForDate(cleanDate, serviceLanguage),
-                          serviceLanguage: serviceLanguage,
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Upcoming Practice Time',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A3D),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: FutureBuilder<bool>(
-                  future: ScheduleUtils.isUserScheduledForDate(
-                    FirebaseAuth.instance.currentUser!.uid,
-                    upcomingSunday,
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          edgeOffset: 0,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 24),
+                Text(
+                  'Upcoming Schedule',
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Text(
-                        'Loading...',
-                        style: TextStyle(color: Colors.white70),
-                      );
-                    }
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: 4,
+                    itemBuilder: (context, index) {
+                      final date =
+                          upcomingSunday.add(Duration(days: 7 * index));
+                      final cleanDate = _cleanDate(date);
 
-                    final isScheduled = snapshot.data ?? false;
+                      return FutureBuilder<String?>(
+                        future: _getUserServiceForDate(cleanDate),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return SizedBox(
+                              width: 200,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: colorScheme.primary,
+                                ),
+                              ),
+                            );
+                          }
 
-                    if (!isScheduled) {
-                      return const Text(
-                        'Not scheduled for this week.',
-                        style: TextStyle(color: Colors.white70),
-                      );
-                    }
+                          final String? serviceLanguage = snapshot.data;
 
-                    return FutureBuilder<String?>(
-                      future: _practiceTimeFuture,
-                      builder: (context, practiceSnapshot) {
-                        if (practiceSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Text(
-                            'Loading practice time...',
-                            style: TextStyle(color: Colors.white70),
+                          return ScheduleCard(
+                            date: cleanDate,
+                            scheduleFuture:
+                                _getScheduleForDate(cleanDate, serviceLanguage),
+                            serviceLanguage: serviceLanguage,
                           );
-                        }
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Upcoming Practice Time',
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: FutureBuilder<bool>(
+                    future: ScheduleUtils.isUserScheduledForDate(
+                      FirebaseAuth.instance.currentUser!.uid,
+                      upcomingSunday,
+                    ),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Text(
+                          'Loading...',
+                          style: TextStyle(
+                              color: colorScheme.onSurface.withAlpha(178)),
+                        );
+                      }
 
-                        final raw = practiceSnapshot.data;
-                        if (raw == null || raw.isEmpty || raw == 'Not set') {
-                          return const Text(
-                            'Practice not set yet.',
-                            style: TextStyle(color: Colors.white70),
-                          );
-                        }
+                      final isScheduled = snapshot.data ?? false;
 
-                        final formattedTime = formatPracticeTime(raw);
+                      if (!isScheduled) {
+                        return Text(
+                          'Not scheduled for this week.',
+                          style: TextStyle(
+                              color: colorScheme.onSurface.withAlpha(178)),
+                        );
+                      }
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Practice Time:',
+                      return FutureBuilder<String?>(
+                        future: _practiceTimeFuture,
+                        builder: (context, practiceSnapshot) {
+                          if (practiceSnapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Text(
+                              'Loading practice time...',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                                  color: colorScheme.onSurface.withAlpha(178)),
+                            );
+                          }
+
+                          final raw = practiceSnapshot.data;
+                          if (raw == null || raw.isEmpty || raw == 'Not set') {
+                            return Text(
+                              'Practice not set yet.',
+                              style: TextStyle(
+                                  color: colorScheme.onSurface.withAlpha(178)),
+                            );
+                          }
+
+                          final formattedTime = formatPracticeTime(raw);
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Practice Time:',
+                                style: TextStyle(
+                                  color: colorScheme.onSurface,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            Text(
-                              formattedTime,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w300,
+                              Text(
+                                formattedTime,
+                                style: TextStyle(
+                                  color: colorScheme.onSurface.withAlpha(178),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w300,
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      },
-                    );
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Text(
+                      'Calendar View',
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: _openBlockoutDialog,
+                      icon: Icon(Icons.calendar_today,
+                          color: colorScheme.onPrimary),
+                      label: const Text('Manage Blockout'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                CustomScheduleCalendar(
+                  focusedDay: _calendarFocusedDay,
+                  selectedDates: const {},
+                  onDaySelected: (_) {},
+                  colorHighlights: {
+                    colorScheme.error: selectedBlockoutDates,
+                    colorScheme.secondary: scheduledDates,
+                  },
+                  showLegend: true,
+                  legendMap: {
+                    colorScheme.error: 'Blockout',
+                    colorScheme.secondary: 'Practice',
                   },
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  const Text(
-                    'Calendar View',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+                const SizedBox(height: 24),
+                Text(
+                  'Pending Requests',
+                  style: TextStyle(
+                    color: colorScheme.onSurface,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: _openBlockoutDialog,
-                    icon: const Icon(Icons.calendar_today, color: Colors.white),
-                    label: const Text('Manage Blockout'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              CustomScheduleCalendar(
-                focusedDay: _calendarFocusedDay,
-                selectedDates: const {},
-                onDaySelected: (_) {},
-                colorHighlights: {
-                  Colors.redAccent: selectedBlockoutDates,
-                  Colors.purple: scheduledDates,
-                },
-                showLegend: true,
-                legendMap: {
-                  Colors.redAccent: 'Blockout',
-                  Colors.purple: 'Practice',
-                },
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Pending Requests',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
-              const SizedBox(height: 12),
-              const PendingRequestsList(),
-            ],
+                const SizedBox(height: 12),
+                const PendingRequestsList(),
+              ],
+            ),
           ),
         ),
       ),

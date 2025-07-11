@@ -33,11 +33,13 @@ class CustomScheduleCalendar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF2A2A3D),
+            color: colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
           ),
           child: TableCalendar(
@@ -54,33 +56,36 @@ class CustomScheduleCalendar extends StatelessWidget {
                 onFocusedDayChanged!(focused);
               }
             },
-            headerStyle: const HeaderStyle(
+            headerStyle: HeaderStyle(
               formatButtonVisible: false,
-              titleTextStyle: TextStyle(color: Colors.white),
-              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white),
-              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
+              titleTextStyle: TextStyle(color: colorScheme.onSurface),
+              leftChevronIcon:
+                  Icon(Icons.chevron_left, color: colorScheme.onSurface),
+              rightChevronIcon:
+                  Icon(Icons.chevron_right, color: colorScheme.onSurface),
             ),
-            daysOfWeekStyle: const DaysOfWeekStyle(
-              weekdayStyle: TextStyle(color: Colors.white70),
-              weekendStyle: TextStyle(color: Colors.redAccent),
+            daysOfWeekStyle: DaysOfWeekStyle(
+              weekdayStyle:
+                  TextStyle(color: colorScheme.onSurface.withAlpha(180)),
+              weekendStyle: TextStyle(color: colorScheme.error),
             ),
             calendarStyle: CalendarStyle(
-              defaultTextStyle: TextStyle(color: Colors.white),
+              defaultTextStyle: TextStyle(color: colorScheme.onSurface),
               todayDecoration: BoxDecoration(
                 color: Colors.transparent,
                 shape: BoxShape.rectangle,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: Colors.blueAccent,
+                  color: colorScheme.primary,
                   width: 2,
                 ),
               ),
               selectedDecoration: BoxDecoration(
-                color: Colors.orange,
+                color: colorScheme.secondary,
                 shape: BoxShape.rectangle,
                 borderRadius: BorderRadius.circular(8),
               ),
-              weekendTextStyle: TextStyle(color: Colors.red),
+              weekendTextStyle: TextStyle(color: colorScheme.error),
               defaultDecoration: BoxDecoration(
                 shape: BoxShape.rectangle,
                 borderRadius: BorderRadius.circular(8),
@@ -111,37 +116,38 @@ class CustomScheduleCalendar extends StatelessWidget {
                 TextStyle dayTextStyle;
 
                 if (isSelected) {
-                  dayDecoration = const BoxDecoration(
-                    color: Colors.orange,
+                  dayDecoration = BoxDecoration(
+                    color: colorScheme.secondary,
                     shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                    borderRadius: BorderRadius.circular(8),
                   );
-                  dayTextStyle = const TextStyle(color: Colors.white);
+                  dayTextStyle = TextStyle(color: colorScheme.onSecondary);
                 } else if (isToday) {
                   dayDecoration = BoxDecoration(
-                    color: Colors.blueAccent,
+                    color: colorScheme.primary,
                     shape: BoxShape.rectangle,
                     borderRadius: BorderRadius.circular(8),
                   );
-                  dayTextStyle = const TextStyle(color: Colors.white);
+                  dayTextStyle = TextStyle(color: colorScheme.onPrimary);
                 } else if (highlightColor != null) {
                   dayDecoration = BoxDecoration(
-                    color: highlightColor,
+                    color: highlightColor.withAlpha(200),
                     shape: BoxShape.rectangle,
                     borderRadius: BorderRadius.circular(8),
                   );
-                  dayTextStyle = const TextStyle(color: Colors.white);
+                  dayTextStyle = TextStyle(color: colorScheme.onSurface);
                 } else {
                   dayDecoration = const BoxDecoration(
                     shape: BoxShape.rectangle,
                   );
                   dayTextStyle = focused.month == day.month
-                      ? const TextStyle(color: Colors.white)
-                      : const TextStyle(color: Colors.white30);
+                      ? TextStyle(color: colorScheme.onSurface)
+                      : TextStyle(color: colorScheme.onSurface.withAlpha(80));
 
                   if (day.weekday == DateTime.saturday ||
                       day.weekday == DateTime.sunday) {
-                    dayTextStyle = dayTextStyle.copyWith(color: Colors.red);
+                    dayTextStyle =
+                        dayTextStyle.copyWith(color: colorScheme.error);
                   }
                 }
 
@@ -178,12 +184,16 @@ class CustomScheduleCalendar extends StatelessWidget {
                   Container(
                     width: 12,
                     height: 12,
-                    color: entry.key,
+                    decoration: BoxDecoration(
+                      color: entry.key,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     entry.value,
-                    style: const TextStyle(color: Colors.white70),
+                    style:
+                        TextStyle(color: colorScheme.onSurface.withAlpha(180)),
                   )
                 ],
               );

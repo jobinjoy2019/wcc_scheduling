@@ -38,7 +38,7 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
           try {
             final date = DateTime.parse(doc.id);
             return DateTime(date.year, date.month, date.day);
-          } catch (e) {
+          } catch (_) {
             return null;
           }
         })
@@ -64,8 +64,7 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
 
   void _handleDaySelected(Set<DateTime> selected) {
     if (selected.isEmpty) return;
-    final picked = selected.first;
-    _toggleDate(picked);
+    _toggleDate(selected.first);
   }
 
   Future<void> _confirmBlockouts() async {
@@ -111,19 +110,20 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
   }
 
   Future<void> _showAutoDismissDialog(String message) async {
+    final colorScheme = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A3D),
+        backgroundColor: colorScheme.surface,
         content: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.greenAccent),
+            Icon(Icons.check_circle, color: colorScheme.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: colorScheme.onSurface),
               ),
             ),
           ],
@@ -132,27 +132,29 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
     );
 
     await Future.delayed(const Duration(seconds: 2));
-    if (context.mounted) Navigator.of(context).pop(); // Close the alert
+    if (context.mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return AlertDialog(
-      backgroundColor: const Color(0xFF2A2A3D),
+      backgroundColor: colorScheme.surface,
       titlePadding:
           const EdgeInsets.only(top: 8, left: 16, right: 8, bottom: 8),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Manage Blockouts',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: colorScheme.onSurface),
           ),
           IconButton(
-            icon: const Icon(FontAwesomeIcons.xmark, color: Colors.white),
+            icon: Icon(FontAwesomeIcons.xmark, color: colorScheme.onSurface),
             splashRadius: 20,
             onPressed: () => Navigator.of(context).pop(),
-          )
+          ),
         ],
       ),
       content: SingleChildScrollView(
@@ -177,11 +179,12 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
                   onDaySelected: _handleDaySelected,
                   onDayDoubleTapped: null,
                   colorHighlights: {
-                    Colors.redAccent: existingBlockouts.toList(),
+                    colorScheme.error.withAlpha(220):
+                        existingBlockouts.toList(),
                   },
                   showLegend: true,
                   legendMap: {
-                    Colors.redAccent: 'Blockout',
+                    colorScheme.error.withAlpha(220): 'Blockout',
                   },
                 ),
               ),
@@ -191,10 +194,10 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _confirmBlockouts,
-                      icon: const Icon(Icons.check),
+                      icon: Icon(Icons.check, color: colorScheme.onPrimary),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6F7CEF),
-                        foregroundColor: Colors.white,
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: colorScheme.onPrimary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -210,15 +213,11 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
                           (selectedDates.isEmpty && existingBlockouts.isEmpty)
                               ? null
                               : _removeBlockouts,
-                      icon: const Icon(
-                        FontAwesomeIcons.trash,
-                        color: Colors.black87,
-                        size: 18,
-                      ),
+                      icon: Icon(FontAwesomeIcons.trash,
+                          color: colorScheme.onError),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            const Color.fromARGB(255, 223, 138, 138),
-                        foregroundColor: Colors.white,
+                        backgroundColor: colorScheme.error,
+                        foregroundColor: colorScheme.onError,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

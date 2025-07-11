@@ -14,7 +14,6 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   List<DocumentSnapshot> users = [];
-  bool isLeader = false;
   late String name;
   final user = FirebaseAuth.instance.currentUser;
   List<String> userRoles = [];
@@ -52,8 +51,19 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _fetchUsers() async {
     final snapshot = await FirebaseFirestore.instance.collection('users').get();
+
+    final sortedDocs = [...snapshot.docs]..sort((a, b) {
+        final aData = a.data();
+        final bData = b.data();
+
+        final aName = getFullName(aData).toLowerCase();
+        final bName = getFullName(bData).toLowerCase();
+
+        return aName.compareTo(bName);
+      });
+
     setState(() {
-      users = snapshot.docs;
+      users = sortedDocs;
     });
   }
 
@@ -108,8 +118,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 builder: (context) => AlertDialog(
                   title: const Text('Confirm Deletion'),
                   content: Text(
-                    'Are you sure you want to delete ${getFullName(user)}?',
-                  ),
+                      'Are you sure you want to delete ${getFullName(user)}?'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context, false),
@@ -117,10 +126,8 @@ class _AdminScreenState extends State<AdminScreen> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
+                      child: const Text('Delete',
+                          style: TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),
@@ -140,6 +147,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   void _openEditUserDialog(DocumentSnapshot userDoc) {
+    final colorScheme = Theme.of(context).colorScheme;
     final data = userDoc.data() as Map<String, dynamic>;
     final firstNameController =
         TextEditingController(text: data['firstName'] ?? '');
@@ -156,61 +164,63 @@ class _AdminScreenState extends State<AdminScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF2A2A3D),
-              title: const Text('Update User Profile',
-                  style: TextStyle(color: Colors.white)),
+              backgroundColor: colorScheme.surface,
+              title: Text('Update User Profile',
+                  style: TextStyle(color: colorScheme.onSurface)),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Email: $email',
-                        style: const TextStyle(color: Colors.white70)),
+                        style: TextStyle(
+                            color: colorScheme.onSurface..withAlpha(178))),
                     const SizedBox(height: 12),
                     TextField(
                       controller: firstNameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: InputDecoration(
                         labelText: 'First Name',
-                        labelStyle: TextStyle(color: Colors.white70),
+                        labelStyle: TextStyle(
+                            color: colorScheme.onSurface..withAlpha(178)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white54),
-                        ),
+                            borderSide: BorderSide(
+                                color: colorScheme.onSurface.withAlpha(128))),
                         focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white),
-                        ),
+                            borderSide: BorderSide(color: colorScheme.primary)),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: lastNameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: colorScheme.onSurface),
+                      decoration: InputDecoration(
                         labelText: 'Last Name',
-                        labelStyle: TextStyle(color: Colors.white70),
+                        labelStyle: TextStyle(
+                            color: colorScheme.onSurface..withAlpha(178)),
                         enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white54),
-                        ),
+                            borderSide: BorderSide(
+                                color: colorScheme.onSurface.withAlpha(128))),
                         focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white),
-                        ),
+                            borderSide: BorderSide(color: colorScheme.primary)),
                       ),
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile(
-                      title: const Text('Make Leader',
-                          style: TextStyle(color: Colors.white)),
+                      title: Text('Make Leader',
+                          style: TextStyle(color: colorScheme.onSurface)),
                       value: isLeader,
                       onChanged: (val) => setDialogState(() => isLeader = val),
                     ),
                     SwitchListTile(
-                      title: const Text('Make Admin',
-                          style: TextStyle(color: Colors.white)),
+                      title: Text('Make Admin',
+                          style: TextStyle(color: colorScheme.onSurface)),
                       value: isAdmin,
                       onChanged: (val) => setDialogState(() => isAdmin = val),
                     ),
-                    const Divider(color: Colors.white24),
-                    const Text('Functions:',
-                        style: TextStyle(color: Colors.white70)),
+                    const Divider(),
+                    Text('Functions:',
+                        style: TextStyle(
+                            color: colorScheme.onSurface.withAlpha(178))),
                     Wrap(
                       spacing: 8,
                       children: ScheduleUtils.functionOrder.map((f) {
@@ -218,16 +228,14 @@ class _AdminScreenState extends State<AdminScreen> {
                         return FilterChip(
                           label: Text(f),
                           selected: selected,
-                          selectedColor: Colors.green,
-                          checkmarkColor: Colors.white,
-                          labelStyle: const TextStyle(color: Colors.white),
+                          selectedColor: colorScheme.primary,
+                          checkmarkColor: colorScheme.onPrimary,
+                          labelStyle: TextStyle(color: colorScheme.onSurface),
                           onSelected: (isSelected) {
                             setDialogState(() {
-                              if (isSelected) {
-                                selectedFunctions.add(f);
-                              } else {
-                                selectedFunctions.remove(f);
-                              }
+                              isSelected
+                                  ? selectedFunctions.add(f)
+                                  : selectedFunctions.remove(f);
                             });
                           },
                         );
@@ -267,8 +275,10 @@ class _AdminScreenState extends State<AdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E2C),
+      backgroundColor: colorScheme.surface,
       appBar: ChurchAppBar(
           name: name, roles: userRoles, currentRole: UserSession.currentRole),
       body: Padding(
@@ -281,31 +291,25 @@ class _AdminScreenState extends State<AdminScreen> {
                 ElevatedButton(
                   onPressed: _showUserListForUpdate,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6F7CEF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                   ),
                   child: const Text('Update User'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEC7440),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
                   onPressed: _showUserListForDelete,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
+                  ),
                   child: const Text('Delete User'),
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            const Text('All Users',
-                style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text('All Users',
+                style: TextStyle(color: colorScheme.onSurface, fontSize: 16)),
             const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
@@ -313,12 +317,13 @@ class _AdminScreenState extends State<AdminScreen> {
                 itemBuilder: (context, index) {
                   final user = users[index].data() as Map<String, dynamic>;
                   return Card(
-                    color: const Color(0xFF2A2A3D),
+                    color: colorScheme.surface,
                     child: ListTile(
                       title: Text(getFullName(user),
-                          style: const TextStyle(color: Colors.white)),
+                          style: TextStyle(color: colorScheme.onSurface)),
                       subtitle: Text(user['email'] ?? '',
-                          style: const TextStyle(color: Colors.white70)),
+                          style: TextStyle(
+                              color: colorScheme.onSurface.withAlpha(178))),
                     ),
                   );
                 },

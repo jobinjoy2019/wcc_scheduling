@@ -48,7 +48,7 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
         name = 'Unnamed';
       }
 
-      if (uid == widget.currentUserId) continue; // exclude self
+      if (uid == widget.currentUserId) continue;
       if (!functions.contains(widget.functionName)) continue;
 
       final scheduleDoc = await firestore
@@ -84,7 +84,6 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
 
     final firestore = FirebaseFirestore.instance;
 
-    // 1. Remove function from current user
     final currentUserScheduleRef = firestore
         .collection('users')
         .doc(widget.currentUserId)
@@ -100,7 +99,6 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
       SetOptions(merge: true),
     );
 
-    // 2. Assign function to new user with Pending response
     final newUserScheduleRef = firestore
         .collection('users')
         .doc(_selectedUserId)
@@ -117,23 +115,28 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
     );
 
     if (mounted) {
-      Navigator.pop(context, true); // Return success
+      Navigator.pop(context, true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return AlertDialog(
-      backgroundColor: const Color(0xFF2A2A3D),
+      backgroundColor: colorScheme.surfaceVariant,
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'Swap with...',
-            style: TextStyle(color: Colors.white),
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: colorScheme.onSurface,
+            ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: Icon(Icons.close, color: colorScheme.onSurface),
             splashRadius: 20,
             onPressed: () => Navigator.of(context).pop(),
           )
@@ -142,13 +145,17 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
       content: SizedBox(
         width: double.maxFinite,
         child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+            ? Center(
+                child: CircularProgressIndicator(
+                  color: colorScheme.primary,
+                ),
               )
             : _availableUsers.isEmpty
-                ? const Text(
+                ? Text(
                     'No available users found.',
-                    style: TextStyle(color: Colors.white70),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.7),
+                    ),
                   )
                 : ListView.builder(
                     shrinkWrap: true,
@@ -160,10 +167,14 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
                       final selected = _selectedUserId == uid;
 
                       return ListTile(
-                        tileColor: selected ? Colors.blue : Colors.transparent,
+                        tileColor: selected
+                            ? colorScheme.primary.withOpacity(0.2)
+                            : Colors.transparent,
                         title: Text(
                           name,
-                          style: const TextStyle(color: Colors.white),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: colorScheme.onSurface,
+                          ),
                         ),
                         onTap: () {
                           setState(() {
@@ -177,13 +188,18 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          child: Text(
+            'Cancel',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
         ),
         ElevatedButton(
           onPressed: _selectedUserId != null ? _performSwap : null,
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+            backgroundColor: colorScheme.primary,
+            foregroundColor: colorScheme.onPrimary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),

@@ -38,7 +38,8 @@ flutter:
   - assets/logos_150px_WCC-Original-White.png
   - assets/Google_Icons-09-512.webp
   - assets/WCC-Responsive-White.png
-
+  - assets\animations\hand_point.json
+  
 flutter_launcher_icons:
   android: true
   ios: true

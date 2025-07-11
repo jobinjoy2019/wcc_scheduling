@@ -34,13 +34,25 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
       final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
       final user = userCred.user;
 
       if (user != null) {
+        // AUTHORIZATION CHECK
+        final isAllowed = await _isEmailAllowed(user.email ?? '');
+        if (!isAllowed) {
+          await FirebaseAuth.instance.signOut();
+          setState(() {
+            _error = 'Access denied: Please contact administrator.';
+          });
+          return;
+        }
         final uid = user.uid;
         // Check if there are any users in the 'users' collection to decide
         // if this is the very first user (who becomes Admin/Leader).
@@ -124,6 +136,23 @@ class _LoginScreenState extends State<LoginScreen> {
       final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
       if (!mounted) return;
+      final user = userCredential.user;
+      if (user == null || user.email == null) {
+        setState(() {
+          _error = 'Google Sign-In failed: No email found.';
+        });
+        return;
+      }
+
+      // AUTHORIZATION CHECK
+      final isAllowed = await _isEmailAllowed(user.email!);
+      if (!isAllowed) {
+        await FirebaseAuth.instance.signOut();
+        setState(() {
+          _error = 'Access denied: You are not authorized to use this app.';
+        });
+        return;
+      }
 
       if (isNewUser) {
         // For new Google users, navigate to profile completion
@@ -159,6 +188,14 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Future<bool> _isEmailAllowed(String email) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('allowedEmails')
+        .doc(email)
+        .get();
+    return doc.exists;
   }
 
   @override

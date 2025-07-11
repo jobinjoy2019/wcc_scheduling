@@ -446,8 +446,12 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+
     return AlertDialog(
-      backgroundColor: const Color(0xFF2A2A3D),
+      backgroundColor: colorScheme.surface,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -457,10 +461,12 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
             children: [
               Text(
                 DateFormat('EEE, MMM d, yy').format(widget.selectedDate),
-                style: const TextStyle(color: Colors.white),
+                style: textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white),
+                icon: Icon(Icons.close, color: colorScheme.onSurface),
                 splashRadius: 20,
                 onPressed: () => Navigator.of(context).pop(),
               )
@@ -474,22 +480,19 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                 Expanded(
                   child: Text(
                     'Service: ${(widget.serviceLanguage != null && widget.serviceLanguage!.isNotEmpty) ? widget.serviceLanguage : 'Not scheduled'}',
-                    style: const TextStyle(
-                      color: Colors.orangeAccent,
-                      fontSize: 14,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.secondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.notifications, color: Colors.green),
+                  icon: Icon(Icons.notifications, color: colorScheme.primary),
                   tooltip: 'Notify',
                   splashRadius: 20,
                   onPressed: () async {
                     final message = _generateScheduleMessage();
-                    await WhatsAppHelper.shareWhatsAppGroupMessage(
-                      message,
-                    );
+                    await WhatsAppHelper.shareWhatsAppGroupMessage(message);
                   },
                 ),
               ],
@@ -506,8 +509,10 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
               for (final function in ScheduleUtils.functionOrder) ...[
                 Text(
                   function,
-                  style: const TextStyle(
-                      color: Colors.orangeAccent, fontWeight: FontWeight.bold),
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Wrap(
                   spacing: 6,
@@ -516,31 +521,40 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                           .map((user) => Chip(
                                 label: Text(
                                   user['name'] ?? 'Unnamed',
-                                  style: const TextStyle(color: Colors.white),
+                                  style: textTheme.labelMedium?.copyWith(
+                                    color: colorScheme.onSecondaryContainer,
+                                  ),
                                 ),
-                                backgroundColor: const Color(0xFF44445A),
+                                backgroundColor: colorScheme.secondaryContainer,
                               ))
                           .toList()
                       : [
-                          const Chip(
+                          Chip(
                             label: Text(
                               'No one scheduled',
-                              style: TextStyle(color: Colors.white70),
+                              style: textTheme.labelMedium?.copyWith(
+                                color: colorScheme.onSecondaryContainer
+                                    .withOpacity(0.7),
+                              ),
                             ),
-                            backgroundColor: Color(0xFF44445A),
+                            backgroundColor: colorScheme.secondaryContainer,
                           )
                         ],
                 ),
                 const SizedBox(height: 12),
               ],
               if (isWorshipLeader) ...[
-                const Divider(color: Colors.white30),
-                const Text('Set Practice Time:',
-                    style: TextStyle(color: Colors.white)),
+                Divider(color: colorScheme.outline.withOpacity(0.3)),
+                Text(
+                  'Set Practice Time:',
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: _pickPracticeTime,
-                  icon: const Icon(Icons.schedule),
+                  icon: Icon(Icons.schedule, color: colorScheme.onPrimary),
                   label: Text(
                     selectedPracticeTime != null
                         ? DateFormat('EEE, MMM d • hh:mm a')
@@ -548,8 +562,8 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                         : 'Select Practice Time',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.primary,
+                    foregroundColor: colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -558,14 +572,14 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: _savePracticeTime,
-                  child: const Text('Update Practice Time'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
+                    backgroundColor: colorScheme.secondary,
+                    foregroundColor: colorScheme.onSecondary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
+                  child: const Text('Update Practice Time'),
                 ),
               ]
             ],

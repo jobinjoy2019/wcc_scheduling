@@ -9,9 +9,17 @@ class WhatsAppHelper {
     required String phoneNumber,
     required String message,
   }) async {
+    print('📞 Phone Number: $phoneNumber');
+    if (!phoneNumber.startsWith('91')) {
+      throw Exception(
+          'Phone number must include country code. Example: 919876543210');
+    }
+
     final encodedMessage = Uri.encodeComponent(message);
     final whatsappUrl =
         Uri.parse("https://wa.me/$phoneNumber?text=$encodedMessage");
+
+    print('🔗 WhatsApp URL: $whatsappUrl');
 
     if (await canLaunchUrl(whatsappUrl)) {
       await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
@@ -20,6 +28,7 @@ class WhatsAppHelper {
     }
   }
 
+  /// Shares a generic message using the system share sheet.
   static Future<void> shareWhatsAppGroupMessage(String message) async {
     await Share.share(message);
   }

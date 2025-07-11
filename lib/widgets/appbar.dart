@@ -103,14 +103,41 @@ class _ChurchAppBarState extends State<ChurchAppBar>
     }
   }
 
+  Future<void> _toggleTheme(
+      BuildContext context, ThemeProvider themeProvider) async {
+    final current = themeProvider.themeMode;
+    ThemeMode newMode;
+
+    if (current == ThemeMode.dark) {
+      newMode = ThemeMode.light;
+    } else {
+      newMode = ThemeMode.dark;
+    }
+
+    await themeProvider.setThemeMode(newMode);
+
+    if (mounted) {
+      final themeName =
+          newMode.name[0].toUpperCase() + newMode.name.substring(1);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Switched to $themeName Theme')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    // Convert roles to lowercase for easy matching
     final rolesLower = widget.roles.map((e) => e.toLowerCase()).toList();
     final currentRoleLower = UserSession.currentRole.toLowerCase();
 
     final isAdmin = rolesLower.contains('admin');
     final isLeader = rolesLower.contains('leader');
 
+    // Determine if role-switching option is shown
     bool showSwitchOption = false;
     String? switchLabel;
     String? switchRoute;
@@ -131,36 +158,31 @@ class _ChurchAppBarState extends State<ChurchAppBar>
       child: Container(
         height: widget.preferredSize.height,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        color: const Color(0xFF1E1E2C),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
+        color: theme.appBarTheme.backgroundColor ?? colorScheme.primary,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Image.asset(
-                      'assets/WCC-Responsive-White.png',
-                      height: 45,
-                    ),
-                    Text(
-                      'Welcome ${_getFirstName(widget.name)}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                Image.asset(
+                  'assets/WCC-Responsive-White.png',
+                  height: 42, // Tint logo automatically
                 ),
-                _buildSettingsIcon(
-                  context,
-                  showSwitchOption,
-                  switchLabel,
-                  switchRoute,
+                const SizedBox(width: 10),
+                Text(
+                  'Welcome ${_getFirstName(widget.name)}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onPrimary.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
+            ),
+            _buildSettingsIcon(
+              context,
+              showSwitchOption,
+              switchLabel,
+              switchRoute,
             ),
           ],
         ),
@@ -320,7 +342,7 @@ class _ChurchAppBarState extends State<ChurchAppBar>
         Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
       }
     } else if (value == 4) {
-      await themeProvider.cycleTheme();
+      await _toggleTheme(context, themeProvider);
     } else if (value == 5) {
       _showDefaultRoleDialog(context);
     }
