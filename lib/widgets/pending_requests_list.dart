@@ -129,7 +129,7 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
               margin: const EdgeInsets.symmetric(vertical: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.surfaceVariant.withAlpha(220),
+                color: colorScheme.surfaceContainerHighest.withAlpha(220),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(

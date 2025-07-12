@@ -227,7 +227,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                         onSelected: (_) => _toggleRole(role),
                         selectedColor: colorScheme.primary,
                         checkmarkColor: colorScheme.onPrimary,
-                        backgroundColor: colorScheme.surfaceVariant,
+                        backgroundColor: colorScheme.surfaceContainerHighest,
                       );
                     }).toList(),
                   ),

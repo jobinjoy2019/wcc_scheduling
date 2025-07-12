@@ -534,7 +534,7 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                               'No one scheduled',
                               style: textTheme.labelMedium?.copyWith(
                                 color: colorScheme.onSecondaryContainer
-                                    .withOpacity(0.7),
+                                    .withAlpha(178),
                               ),
                             ),
                             backgroundColor: colorScheme.secondaryContainer,
@@ -544,7 +544,7 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                 const SizedBox(height: 12),
               ],
               if (isWorshipLeader) ...[
-                Divider(color: colorScheme.outline.withOpacity(0.3)),
+                Divider(color: colorScheme.outline.withAlpha(100)),
                 Text(
                   'Set Practice Time:',
                   style: textTheme.bodyMedium?.copyWith(

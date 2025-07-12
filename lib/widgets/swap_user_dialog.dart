@@ -125,7 +125,7 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
     final colorScheme = theme.colorScheme;
 
     return AlertDialog(
-      backgroundColor: colorScheme.surfaceVariant,
+      backgroundColor: colorScheme.surfaceContainerHighest,
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -154,7 +154,7 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
                 ? Text(
                     'No available users found.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: colorScheme.onSurface.withAlpha(178),
                     ),
                   )
                 : ListView.builder(
@@ -168,7 +168,7 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
 
                       return ListTile(
                         tileColor: selected
-                            ? colorScheme.primary.withOpacity(0.2)
+                            ? colorScheme.primary.withAlpha(75)
                             : Colors.transparent,
                         title: Text(
                           name,
@@ -191,7 +191,7 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
           child: Text(
             'Cancel',
             style: theme.textTheme.labelLarge?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.7),
+              color: colorScheme.onSurface.withAlpha(178),
             ),
           ),
         ),
