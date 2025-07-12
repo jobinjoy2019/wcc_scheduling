@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:scheduler_app/widgets/appbar.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -118,20 +119,31 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        setState(() => _loading = false); // User cancelled the sign-in
-        return;
+      UserCredential userCredential;
+
+      if (kIsWeb) {
+        // WEB SIGN-IN
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+
+        userCredential =
+            await FirebaseAuth.instance.signInWithPopup(googleProvider);
+      } else {
+        // MOBILE SIGN-IN
+        final googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) {
+          setState(() => _loading = false); // User cancelled
+          return;
+        }
+
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
       }
-
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
 
       final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
@@ -155,10 +167,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (isNewUser) {
-        // For new Google users, navigate to profile completion
         Navigator.pushReplacementNamed(context, '/complete_profile');
       } else {
-        // For existing Google users, fetch roles and navigate
         final uid = FirebaseAuth.instance.currentUser?.uid;
         if (uid != null) {
           final doc = await FirebaseFirestore.instance
@@ -175,7 +185,6 @@ class _LoginScreenState extends State<LoginScreen> {
             Navigator.pushReplacementNamed(context, '/members');
           }
         } else {
-          // Handle case where UID is null after Google sign-in (shouldn't happen often)
           setState(() {
             _error = 'Could not retrieve user ID after Google sign-in.';
           });
