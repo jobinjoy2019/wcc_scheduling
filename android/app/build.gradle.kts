@@ -1,3 +1,8 @@
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
 buildscript {
     dependencies {
         classpath("com.google.gms:google-services:4.4.1")
@@ -48,10 +53,12 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("./beta-release-key.keystore")
-            storePassword = "7OfOg46Tkw0"
-            keyAlias = "temp_key"
-            keyPassword = "7OfOg46Tkw0"
+             if (project.hasProperty('storePassword')) {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file(keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
+        }
         }
     }
 
