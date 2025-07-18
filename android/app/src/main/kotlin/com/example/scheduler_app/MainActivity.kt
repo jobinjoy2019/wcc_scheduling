@@ -1,4 +1,4 @@
-package com.example.scheduler_app
+package com.example.altarify
 
 import io.flutter.embedding.android.FlutterActivity
 

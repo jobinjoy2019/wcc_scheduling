@@ -45,7 +45,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.wcc.croissant"
+        applicationId = "com.wcc.altarify"
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

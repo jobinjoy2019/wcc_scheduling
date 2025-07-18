@@ -1,5 +1,5 @@
-name: scheduler_app
-description: A scheduling app for team availability and leader selection.
+name: altarify
+description: A scheduling app for team availability
 
 publish_to: 'none'
 
