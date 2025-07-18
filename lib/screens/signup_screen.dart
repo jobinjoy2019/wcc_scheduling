@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -53,6 +54,22 @@ class _SignupScreenState extends State<SignupScreen> {
       await userCredential.user
           ?.updateDisplayName(_firstnamecontroller.text.trim());
 
+      // ✅ Also create user doc if missing
+      final uid = userCredential.user?.uid;
+      if (uid != null) {
+        final userDocRef =
+            FirebaseFirestore.instance.collection('users').doc(uid);
+        final userDoc = await userDocRef.get();
+        if (!userDoc.exists) {
+          await userDocRef.set({
+            'name': _firstnamecontroller.text.trim(),
+            'email': email,
+            'roles': [],
+            'functions': [],
+          });
+        }
+      }
+
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/complete-profile');
     } on FirebaseAuthException catch (e) {
@@ -71,38 +88,73 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      final googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) {
-        setState(() => _loading = false);
-        return;
+      UserCredential userCredential;
+
+      if (kIsWeb) {
+        // Web sign-in
+        final googleProvider = GoogleAuthProvider();
+        userCredential =
+            await FirebaseAuth.instance.signInWithPopup(googleProvider);
+      } else {
+        // Mobile sign-in
+        final googleUser = await GoogleSignIn().signIn();
+        if (googleUser == null) {
+          setState(() => _loading = false);
+          return;
+        }
+
+        final googleAuth = await googleUser.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
       }
 
-      final email = googleUser.email.trim().toLowerCase();
-      final isAllowed = await isEmailAllowed(email);
+      if (!mounted) return;
+      final user = userCredential.user;
 
-      if (!isAllowed) {
-        await GoogleSignIn().signOut();
-        await FirebaseAuth.instance.signOut();
+      if (user == null || user.email == null) {
         setState(() {
-          _error = 'This email is not authorized to sign in.';
+          _error = 'Google Sign-In failed: No email found.';
         });
         return;
       }
 
-      final googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      final trimmedEmail = user.email!.trim().toLowerCase();
 
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
+// ✅ Check if email is authorized
+      final isAllowed = await isEmailAllowed(trimmedEmail);
+      if (!isAllowed) {
+        await FirebaseAuth.instance.signOut();
+        setState(() {
+          _error = 'This email is not authorized to sign up.';
+        });
+        return;
+      }
 
-      final user = userCredential.user;
+// ✅ Ensure Firestore user document exists
+      final uid = user.uid;
+      final userDocRef =
+          FirebaseFirestore.instance.collection('users').doc(uid);
+      final userDoc = await userDocRef.get();
 
-      if (user != null &&
-          (user.displayName == null || user.displayName!.isEmpty)) {
-        await user.updateDisplayName(googleUser.displayName ?? '');
+      if (!userDoc.exists) {
+        // First time ever — create user profile
+        await userDocRef.set({
+          'name': user.displayName ?? '',
+          'email': trimmedEmail,
+          'roles': [],
+          'functions': [],
+        });
+      }
+
+// ✅ Update display name if missing
+      if (user.displayName == null || user.displayName!.isEmpty) {
+        final name = user.displayName ?? '';
+        await user.updateDisplayName(name);
       }
 
       if (!mounted) return;
@@ -202,7 +254,7 @@ class _SignupScreenState extends State<SignupScreen> {
             OutlinedButton.icon(
               onPressed: _loading ? null : _signInWithGoogle,
               style: OutlinedButton.styleFrom(
-                backgroundColor: colorScheme.onSurface,
+                backgroundColor: Colors.white,
                 side: BorderSide(color: colorScheme.outline),
                 padding:
                     const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -217,8 +269,7 @@ class _SignupScreenState extends State<SignupScreen> {
               label: Text(
                 'Sign in with Google',
                 style: TextStyle(
-                  color: colorScheme.onSurface,
-                  fontWeight: FontWeight.w500,
+                   color: Colors.black87, fontWeight: FontWeight.w500
                 ),
               ),
             ),

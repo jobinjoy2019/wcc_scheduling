@@ -12,6 +12,7 @@ import 'package:scheduler_app/widgets/reusable_schedule_util.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:scheduler_app/widgets/whatsapp_message.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class LeaderDashboardScreen extends StatefulWidget {
   const LeaderDashboardScreen({super.key});
@@ -34,10 +35,10 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
   String? worshipLeaderPhoneNumber;
   List<String> userRoles = [];
   String currentRole = 'Member';
-  final Map<String, Future<Map<String, List<Map<String, dynamic>>>>>
-      _scheduleCache = {};
   Map<String, List<Map<String, dynamic>>> teamStatusByFunction = {};
   Future<String?> _practiceTimeFuture = Future.value(null);
+  CalendarFormat _format = CalendarFormat.month;
+  DateTime _scheduleRefreshToken = DateTime.now();
 
   @override
   void initState() {
@@ -53,7 +54,6 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
 
   @override
   void dispose() {
-    _scheduleCache.clear();
     super.dispose();
   }
 
@@ -77,33 +77,16 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
   }
 
   Future<void> _loadInitialPracticeTime() async {
-    if (_firstScheduleCardDate == null) {
-      final now = DateTime.now();
-      final upcomingSunday = now.add(Duration(days: (7 - now.weekday) % 7));
-      _firstScheduleCardDate = _cleanDate(upcomingSunday);
-    }
-    final uid = await _findWorshipLeaderUid(
-      _firstScheduleCardDate!,
-      selectedService,
-    );
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final practiceTime = await ScheduleUtils.fetchPracticeTimeForWeek(uid);
+
     if (mounted) {
       setState(() {
-        _practiceTimeFuture = uid != null
-            ? ScheduleUtils.fetchPracticeTimeForWeek(uid)
-            : Future.value('Not set');
+        _practiceTimeFuture = Future.value(practiceTime ?? 'Not set');
       });
     }
-  }
-
-  Future<Map<String, List<Map<String, dynamic>>>> _getScheduleForDate(
-      DateTime date, String? service) {
-    final cleanDate = _cleanDate(date);
-    final cacheKey = service != null
-        ? '${cleanDate.toIso8601String()}|$service'
-        : '${cleanDate.toIso8601String()}|ALL';
-    _scheduleCache.putIfAbsent(cacheKey,
-        () => ScheduleUtils.fetchTeamStatusForDate(cleanDate, service));
-    return _scheduleCache[cacheKey]!;
   }
 
   Future<void> _loadAllUserBlockouts() async {
@@ -303,6 +286,9 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
   }
 
   Future<void> _refreshDashboard() async {
+    setState(() {
+      _scheduleRefreshToken = DateTime.now(); // forces schedule refresh
+    });
     // For example
     await Future.wait([
       _loadAllUserBlockouts(),
@@ -402,8 +388,10 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
                       return ScheduleCard(
                         date: cleanDate,
                         serviceLanguage: selectedService,
-                        scheduleFuture:
-                            _getScheduleForDate(cleanDate, selectedService),
+                        key: ValueKey(
+                            'schedule_${cleanDate}_$_scheduleRefreshToken'),
+                        scheduleStream: ScheduleUtils.getScheduleStreamForDate(
+                            cleanDate, selectedService),
                       );
                     },
                   ),
@@ -533,6 +521,12 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
                 const SizedBox(height: 12),
                 CustomScheduleCalendar(
                   focusedDay: _calendarFocusedDay,
+                  calendarFormat: _format,
+                  onFormatChanged: (newFormat) {
+                    setState(() {
+                      _format = newFormat;
+                    });
+                  },
                   onFocusedDayChanged: (newFocused) {
                     setState(() {
                       _calendarFocusedDay = newFocused;

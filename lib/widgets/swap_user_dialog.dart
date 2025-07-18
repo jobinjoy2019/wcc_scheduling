@@ -84,13 +84,16 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
 
     final firestore = FirebaseFirestore.instance;
 
+    final batch = firestore.batch();
+
     final currentUserScheduleRef = firestore
         .collection('users')
         .doc(widget.currentUserId)
         .collection('schedules')
         .doc(widget.dateId);
 
-    await currentUserScheduleRef.set(
+    batch.set(
+      currentUserScheduleRef,
       {
         'functions': FieldValue.arrayRemove([widget.functionName]),
         'response': null,
@@ -105,14 +108,51 @@ class _SwapUserDialogState extends State<SwapUserDialog> {
         .collection('schedules')
         .doc(widget.dateId);
 
-    await newUserScheduleRef.set(
+    batch.set(
+      newUserScheduleRef,
       {
-        'functions': [widget.functionName],
+        'functions': FieldValue.arrayUnion([widget.functionName]),
         'response': 'Pending',
         'service': widget.serviceLanguage,
       },
       SetOptions(merge: true),
     );
+
+    // 🔥 NEW PART: Also update the central /schedules/{dateId} doc
+    // Fetch the new user's *name* from /users/{uid}
+    final newUserDoc =
+        await firestore.collection('users').doc(_selectedUserId).get();
+    final newUserData = newUserDoc.data();
+    String firstName = (newUserData?['firstName'] as String?)?.trim() ?? '';
+    String lastName = (newUserData?['lastName'] as String?)?.trim() ?? '';
+    String fullName = ('$firstName $lastName').trim();
+    if (fullName.isEmpty) {
+      fullName = (newUserData?['name'] as String?)?.trim() ?? 'Unnamed';
+    }
+
+    final centralScheduleRef =
+        firestore.collection('schedules').doc(widget.dateId);
+
+    batch.set(
+      centralScheduleRef,
+      {
+        widget.serviceLanguage: {
+          'assignments': {
+            widget.functionName: [
+              {
+                'uid': _selectedUserId,
+                'name': fullName,
+                'response': 'Pending',
+              }
+            ]
+          }
+        }
+      },
+      SetOptions(merge: true),
+    );
+
+    // ✅ Commit all writes together
+    await batch.commit();
 
     if (mounted) {
       Navigator.pop(context, true);

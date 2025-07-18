@@ -17,6 +17,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   DateTime _calendarFocusedDay = DateTime.now();
   final Map<String, List<DocumentSnapshot>> functionUsers = {};
   final Map<String, Set<String>> selectedUsersByFunction = {};
+  String? _practiceTime;
+  Map<String, String> responses = {}; // uid -> response
 
   final List<String> functionOrder = ScheduleUtils.functionOrder;
   String _serviceLanguage = 'English';
@@ -113,12 +115,85 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     await batch.commit();
 
+    // NEW: Also update central /schedules/{date} doc
+    final allUsersMap = {
+      for (final list in functionUsers.values)
+        for (final doc in list) doc['uid'] as String: doc
+    };
+
+    final scheduleMap = buildScheduleMap(
+      _serviceLanguage,
+      selectedUsersByFunction,
+      allUsersMap,
+      _practiceTime,
+    );
+
+    await writeToCentralSchedule(
+      formattedDate: formattedDate,
+      serviceLanguage: _serviceLanguage,
+      scheduleMap: scheduleMap,
+    );
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Schedule successfully saved!')),
       );
       Navigator.pop(context);
     }
+  }
+
+  Map<String, dynamic> buildScheduleMap(
+    String serviceLanguage,
+    Map<String, Set<String>> selectedUsersByFunction,
+    Map<String, DocumentSnapshot> allUsers,
+    String? practiceTime,
+  ) {
+    final assignments = <String, List<Map<String, dynamic>>>{};
+
+    selectedUsersByFunction.forEach((function, uids) {
+      final usersForFunction = <Map<String, dynamic>>[];
+
+      for (final uid in uids) {
+        final doc = allUsers[uid];
+        if (doc == null) continue;
+
+        final firstName = (doc['firstName'] ?? '').toString().trim();
+        final lastName = (doc['lastName'] ?? '').toString().trim();
+        final name = '$firstName $lastName'.trim().isEmpty
+            ? 'Unnamed'
+            : '$firstName $lastName'.trim();
+
+        usersForFunction.add({
+          'uid': uid,
+          'name': name,
+          'response': 'Pending',
+        });
+      }
+
+      if (usersForFunction.isNotEmpty) {
+        assignments[function] = usersForFunction;
+      }
+    });
+
+    return {
+      'serviceLanguage': serviceLanguage,
+      'practiceTime': practiceTime, // ✅ Added here
+      'assignments': assignments,
+    };
+  }
+
+  Future<void> writeToCentralSchedule({
+    required String formattedDate,
+    required String serviceLanguage,
+    required Map<String, dynamic> scheduleMap,
+  }) async {
+    final docRef =
+        FirebaseFirestore.instance.collection('schedules').doc(formattedDate);
+
+    await docRef.set(
+      {serviceLanguage: scheduleMap},
+      SetOptions(merge: true),
+    );
   }
 
   @override
@@ -255,21 +330,49 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       final name = '$firstName $lastName'.trim();
                       final displayName = name.isEmpty ? 'Unnamed' : name;
                       final selected = selectedSet.contains(uid);
+
+                      // Check if this user is already selected for any other function
+                      bool selectedElsewhere =
+                          selectedUsersByFunction.entries.any((entry) {
+                        final otherFunction = entry.key;
+                        final selectedUids = entry.value;
+
+                        // Skip the current function
+                        if (otherFunction == function) return false;
+
+                        // Exceptions: allow overlap only between Worship Leader and Acoustic Guitar
+                        bool isAllowedOverlap = (function == 'Worship Leader' &&
+                                otherFunction == 'Acoustic Guitar') ||
+                            (function == 'Acoustic Guitar' &&
+                                otherFunction == 'Worship Leader');
+
+                        if (isAllowedOverlap) return false;
+
+                        return selectedUids.contains(uid);
+                      });
+
+                      // Disable chip if selected elsewhere and not an exception
+                      final isDisabled = selectedElsewhere && !selected;
                       return FilterChip(
                         label: Text(displayName),
                         selected: selected,
-                        onSelected: (val) {
-                          setState(() {
-                            if (val) {
-                              selectedSet.add(uid);
-                            } else {
-                              selectedSet.remove(uid);
-                            }
-                          });
-                        },
+                        onSelected: isDisabled
+                            ? null
+                            : (val) {
+                                setState(() {
+                                  if (val) {
+                                    selectedSet.add(uid);
+                                  } else {
+                                    selectedSet.remove(uid);
+                                  }
+                                });
+                              },
                         selectedColor: colorScheme.primary,
                         checkmarkColor: colorScheme.onPrimary,
                         labelStyle: TextStyle(color: colorScheme.onSurface),
+                        backgroundColor: isDisabled
+                            ? colorScheme.surfaceContainerHighest.withAlpha(125)
+                            : null,
                       );
                     }).toList(),
                   ),

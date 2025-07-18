@@ -65,6 +65,7 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
       return;
     }
 
+    // 1️⃣ Update user's personal schedule subdoc
     final scheduleDoc = FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -76,6 +77,45 @@ class _PendingRequestsListState extends State<PendingRequestsList> {
       SetOptions(merge: true),
     );
 
+    // 2️⃣ Update central schedules/{dateId}
+    final centralDocRef =
+        FirebaseFirestore.instance.collection('schedules').doc(dateId);
+
+    final centralDocSnap = await centralDocRef.get();
+
+    if (centralDocSnap.exists) {
+      final data = centralDocSnap.data()!;
+      final serviceSection = data[serviceLanguageforday];
+
+      if (serviceSection != null && serviceSection is Map) {
+        final assignments = serviceSection['assignments'];
+        bool updated = false;
+
+        if (assignments != null && assignments is Map) {
+          assignments.forEach((function, usersList) {
+            if (usersList is List) {
+              for (final user in usersList) {
+                if (user is Map && user['uid'] == uid) {
+                  user['response'] = response;
+                  updated = true;
+                }
+              }
+            }
+          });
+        }
+
+        if (updated) {
+          await centralDocRef.set({
+            serviceLanguageforday: {
+              ...serviceSection,
+              'assignments': assignments,
+            }
+          }, SetOptions(merge: true));
+        }
+      }
+    }
+
+    // 3️⃣ Show feedback
     if (mounted) {
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
