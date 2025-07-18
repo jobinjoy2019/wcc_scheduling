@@ -122,16 +122,16 @@ class _LoginScreenState extends State<LoginScreen> {
       UserCredential userCredential;
 
       if (kIsWeb) {
-        // WEB SIGN-IN
-        GoogleAuthProvider googleProvider = GoogleAuthProvider();
-
+        // Web sign-in
+        final googleProvider = GoogleAuthProvider();
         userCredential =
             await FirebaseAuth.instance.signInWithPopup(googleProvider);
       } else {
-        // MOBILE SIGN-IN
+        // Mobile sign-in
         final googleUser = await GoogleSignIn().signIn();
         if (googleUser == null) {
-          setState(() => _loading = false); // User cancelled
+          // User canceled
+          setState(() => _loading = false);
           return;
         }
 
@@ -145,10 +145,9 @@ class _LoginScreenState extends State<LoginScreen> {
             await FirebaseAuth.instance.signInWithCredential(credential);
       }
 
-      final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
-
       if (!mounted) return;
       final user = userCredential.user;
+
       if (user == null || user.email == null) {
         setState(() {
           _error = 'Google Sign-In failed: No email found.';
@@ -156,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // AUTHORIZATION CHECK
+      // ✅ Check if email is in allowedEmails
       final isAllowed = await _isEmailAllowed(user.email!);
       if (!isAllowed) {
         await FirebaseAuth.instance.signOut();
@@ -166,29 +165,37 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (isNewUser) {
-        Navigator.pushReplacementNamed(context, '/complete_profile');
-      } else {
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        if (uid != null) {
-          final doc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(uid)
-              .get();
-          final roles = List<String>.from(doc.data()?['roles'] ?? []);
+      final uid = user.uid;
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
-          if (roles.contains('Admin')) {
-            Navigator.pushReplacementNamed(context, '/admin');
-          } else if (roles.contains('Leader')) {
-            Navigator.pushReplacementNamed(context, '/leader');
-          } else {
-            Navigator.pushReplacementNamed(context, '/members');
-          }
+      if (!userDoc.exists) {
+        // ✅ First time user: no profile yet
+        Navigator.pushReplacementNamed(context, '/complete-profile');
+        return;
+      }
+
+      // ✅ Returning user: check roles
+      final roles = List<String>.from(userDoc.data()?['roles'] ?? []);
+      final rolesLower = roles.map((r) => r.toLowerCase()).toList();
+
+      final defaultRole =
+          (await DefaultRoleService.getDefaultRole())?.toLowerCase();
+
+      if (defaultRole != null && rolesLower.contains(defaultRole)) {
+        if (defaultRole == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else if (defaultRole == 'leader') {
+          Navigator.pushReplacementNamed(context, '/leader');
         } else {
-          setState(() {
-            _error = 'Could not retrieve user ID after Google sign-in.';
-          });
+          Navigator.pushReplacementNamed(context, '/members');
         }
+      } else if (rolesLower.contains('admin')) {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else if (rolesLower.contains('leader')) {
+        Navigator.pushReplacementNamed(context, '/leader');
+      } else {
+        Navigator.pushReplacementNamed(context, '/members');
       }
     } catch (e) {
       setState(() {

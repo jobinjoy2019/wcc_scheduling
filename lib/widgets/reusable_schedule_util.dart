@@ -19,64 +19,62 @@ class ScheduleUtils {
     'Sound Engineer',
   ];
 
-  static Future<Map<String, List<Map<String, dynamic>>>> fetchTeamStatusForDate(
-    DateTime date, [
+  static Map<String, List<Map<String, dynamic>>> parseScheduleDocument(
+    Map<String, dynamic>? data,
+    String formattedDate,
     String? serviceLanguage,
-  ]) async {
-    final formattedDate = _formatDateKey(date);
+  ) {
+    if (data == null || data.isEmpty) {
+      return {for (final func in functionOrder) func: []};
+    }
 
-    final usersSnapshot =
-        await FirebaseFirestore.instance.collection('users').get();
-
-    final Map<String, List<Map<String, dynamic>>> assignmentMap = {};
-
-    for (final userDoc in usersSnapshot.docs) {
-      final uid = userDoc['uid'];
-      final firstName = (userDoc.data()['firstName'] as String?)?.trim() ?? '';
-      final lastName = (userDoc.data()['lastName'] as String?)?.trim() ?? '';
-      String name = ('$firstName $lastName').trim();
-
-      if (name.isEmpty) {
-        name = (userDoc.data()['name'] as String?)?.trim() ?? 'Unnamed';
+    final Map<String, dynamic>? serviceSection;
+    if (serviceLanguage != null) {
+      final section = data[serviceLanguage];
+      if (section is Map<String, dynamic>) {
+        serviceSection = section;
+      } else {
+        return {for (final func in functionOrder) func: []};
       }
-
-      final scheduleDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('schedules')
-          .doc(formattedDate)
-          .get();
-
-      if (!scheduleDoc.exists) continue;
-
-      final data = scheduleDoc.data();
-      if (data == null) continue;
-
-      // ✅ Optional service filtering
-      final docService = data['service'];
-      if (serviceLanguage != null && docService != serviceLanguage) continue;
-
-      final List<dynamic>? functions = data['functions'];
-      if (functions == null) continue;
-
-      final String response = data['response'] ?? 'Unknown';
-      final String? practiceTime = data['practiceTime'];
-      final String? service = data['service'];
-
-      for (final func in functions) {
-        assignmentMap.putIfAbsent(func, () => []).add({
-          'uid': uid,
-          'name': name,
-          'response': response,
-          'practiceTime': practiceTime,
-          'service': service,
-          "date": formattedDate,
-          "function": func,
-        });
+    } else {
+      final firstSection = data.entries.first.value;
+      if (firstSection is Map<String, dynamic>) {
+        serviceSection = firstSection;
+      } else {
+        return {for (final func in functionOrder) func: []};
       }
     }
 
-    // Ensure all functions are present in the map
+    final String? practiceTime = serviceSection['practiceTime'] as String?;
+    final String? service = serviceSection['serviceLanguage'] as String?;
+    final assignments = serviceSection['assignments'];
+
+    final Map<String, List<Map<String, dynamic>>> assignmentMap = {};
+
+    if (assignments is Map) {
+      assignments.forEach((function, userList) {
+        if (userList is List) {
+          for (final user in userList) {
+            if (user is Map) {
+              final uid = user['uid'] ?? '';
+              final name = (user['name'] ?? 'Unnamed').toString();
+              final response = (user['response'] ?? 'Unknown').toString();
+
+              assignmentMap.putIfAbsent(function, () => []).add({
+                'uid': uid,
+                'name': name,
+                'response': response,
+                'practiceTime': practiceTime,
+                'service': service,
+                'date': formattedDate,
+                'function': function,
+              });
+            }
+          }
+        }
+      });
+    }
+
     for (final func in functionOrder) {
       assignmentMap.putIfAbsent(func, () => []);
     }
@@ -84,75 +82,84 @@ class ScheduleUtils {
     return assignmentMap;
   }
 
-  static Future<bool> isUserScheduledForDate(String uid, DateTime date) async {
-    final teamMap = await fetchTeamStatusForDate(date);
+  static Future<Map<String, List<Map<String, dynamic>>>> fetchTeamStatusForDate(
+    DateTime date, [
+    String? serviceLanguage,
+  ]) async {
+    final formattedDate = _formatDateKey(date);
 
-    for (final funcMembers in teamMap.values) {
-      for (final member in funcMembers) {
-        if (member['uid'] == uid) {
-          return true;
+    final centralDoc = await FirebaseFirestore.instance
+        .collection('schedules')
+        .doc(formattedDate)
+        .get();
+
+    final data = centralDoc.data();
+    return parseScheduleDocument(data, formattedDate, serviceLanguage);
+  }
+
+  static Future<bool> isUserScheduledForDate(String uid, DateTime date) async {
+    final formattedDate = _formatDateKey(date);
+
+    final docSnapshot = await FirebaseFirestore.instance
+        .collection('schedules')
+        .doc(formattedDate)
+        .get();
+
+    if (!docSnapshot.exists) return false;
+
+    final data = docSnapshot.data();
+    if (data == null) return false;
+
+    // For each serviceLanguage section
+    for (final serviceEntry in data.entries) {
+      final serviceData = serviceEntry.value;
+      if (serviceData is! Map<String, dynamic>) continue;
+
+      final assignments = serviceData['assignments'];
+      if (assignments is! Map<String, dynamic>) continue;
+
+      // For each function
+      for (final funcEntry in assignments.entries) {
+        final usersList = funcEntry.value;
+        if (usersList is! List) continue;
+
+        // For each user
+        for (final user in usersList) {
+          if (user is Map && user['uid'] == uid) {
+            return true;
+          }
         }
       }
     }
+
     return false;
   }
 
   static Future<String?> fetchPracticeTimeForWeek(String uid) async {
     final now = DateTime.now();
-    // Calculate the start of the current week (Sunday)
-    // (now.weekday - 1) gives days since Monday (0 for Monday, 6 for Sunday)
-    // For Sunday, now.weekday is 7. (7 - 1) = 6. now.day - 6 will give previous Sunday.
-    // We need to adjust it to start from Monday, or consistently from Sunday.
-    // Assuming a week starts on Monday (weekday 1) for Dart's DateTime.weekday
-    // If your week starts on Sunday, adjust (now.weekday % 7)
     final startOfWeek =
         DateTime(now.year, now.month, now.day - (now.weekday - 1));
-    final endOfWeek = startOfWeek.add(const Duration(days: 6));
 
-    final scheduleRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('schedules');
+    for (int i = 0; i < 7; i++) {
+      final date = startOfWeek.add(Duration(days: i));
+      final dateId = _formatDateKey(date);
 
-    // Fetch all schedule documents for the user
-    final querySnapshot = await scheduleRef.get();
-
-    for (final doc in querySnapshot.docs) {
       try {
-        // Parse the document ID (which is the dateKey like 'yyyy-MM-dd')
-        final docDate = DateTime.parse(doc.id);
+        final teamStatus = await fetchTeamStatusForDate(date);
 
-        // Normalize docDate to midnight to compare only dates
-        final normalizedDocDate =
-            DateTime(docDate.year, docDate.month, docDate.day);
-        final normalizedStartOfWeek =
-            DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-        final normalizedEndOfWeek =
-            DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day);
-
-        // Check if the document's date falls within the current week (inclusive)
-        if ((normalizedDocDate.isAtSameMomentAs(normalizedStartOfWeek) ||
-                normalizedDocDate.isAfter(normalizedStartOfWeek)) &&
-            (normalizedDocDate.isAtSameMomentAs(normalizedEndOfWeek) ||
-                normalizedDocDate.isBefore(normalizedEndOfWeek))) {
-          final data = doc.data();
-          if (data.containsKey('practiceTime')) {
-            // Return the first practice time found within the week
-            // Assuming a user only has ONE practice time for a given week,
-            // regardless of how many days they are scheduled.
-            // If a user can have multiple practice times for a week across different days,
-            // you'd need to modify this to return a list or the most relevant one.
-            return data['practiceTime'] as String?;
+        for (final assignments in teamStatus.values) {
+          for (final user in assignments) {
+            if (user['uid'] == uid) {
+              return user['practiceTime'] as String?;
+            }
           }
         }
       } catch (e) {
-        // Log the error for invalid date formats in document IDs, useful for debugging
-        print('Error parsing document ID ${doc.id}: $e');
-        // Continue to the next document
+        print('⚠️ Error fetching practice time for $dateId: $e');
+        continue;
       }
     }
 
-    // If no practice time is found for any scheduled date in the week
     return null;
   }
 
@@ -187,10 +194,13 @@ class ScheduleUtils {
     return uniqueDates;
   }
 
-  static bool hasAnyFunctionAssigned(
-      Map<String, List<Map<String, dynamic>>> teamStatus) {
-    for (final entries in teamStatus.values) {
-      if (entries.isNotEmpty) {
+  static bool hasAnyFunctionAssignedForService(
+    Map<String, dynamic> fullSchedule,
+    String serviceLanguage,
+  ) {
+    // If fullSchedule is already just the assignment map
+    for (final value in fullSchedule.values) {
+      if (value is List && value.isNotEmpty) {
         return true;
       }
     }
@@ -201,6 +211,26 @@ class ScheduleUtils {
     return '${date.year.toString().padLeft(4, '0')}-'
         '${date.month.toString().padLeft(2, '0')}-'
         '${date.day.toString().padLeft(2, '0')}';
+  }
+
+  static Stream<Map<String, List<Map<String, dynamic>>>>
+      getScheduleStreamForDate(
+    DateTime date,
+    String? serviceLanguage,
+  ) {
+    final formattedDate = _formatDateKey(date);
+
+    return FirebaseFirestore.instance
+        .collection('schedules')
+        .doc(formattedDate)
+        .snapshots()
+        .map((doc) {
+      return parseScheduleDocument(
+        doc.data(),
+        formattedDate,
+        serviceLanguage,
+      );
+    });
   }
 }
 
@@ -238,11 +268,27 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
   bool isWorshipLeader = false;
   bool isUserScheduled = false;
   late String dateKey;
+  bool isLeaderOrAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _loadSchedule();
+    _checkUserRole();
+  }
+
+  void _checkUserRole() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final role =
+        userDoc.data()?['role']; // assume role = 'member', 'leader', or 'admin'
+
+    setState(() {
+      isLeaderOrAdmin = role == 'leader' || role == 'admin';
+    });
   }
 
   String _generateScheduleMessage() {
@@ -253,11 +299,7 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
         '📅 ${DateFormat('EEE, MMM d, yy').format(widget.selectedDate)}');
 
     // Add Service
-    if (widget.isServiceScheduled) {
-      buffer.writeln('Service: ${widget.serviceLanguage ?? 'Not scheduled'}');
-    } else {
-      buffer.writeln('Service: Not scheduled');
-    }
+    buffer.writeln('Service: ${widget.serviceLanguage ?? 'Not scheduled'}');
 
     buffer.writeln('');
     buffer.writeln('Worship Team Schedule:');
@@ -295,46 +337,69 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    final userRef =
-        FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
-    final userSnapshot = await userRef.get();
+    final formattedDate = DateFormat('yyyy-MM-dd').format(widget.selectedDate);
 
-    final userData = userSnapshot.data();
-    if (userData == null) {
+    final scheduleDoc = await FirebaseFirestore.instance
+        .collection('schedules')
+        .doc(formattedDate)
+        .get();
+
+    if (!scheduleDoc.exists) {
       setState(() {
         scheduleMap = {};
         isUserScheduled = false;
         isWorshipLeader = false;
+        selectedPracticeTime = null;
       });
       return;
     }
 
-    // 1️⃣ Load the full team schedule for this date
-    final teamSchedule = await ScheduleUtils.fetchTeamStatusForDate(
-        widget.selectedDate, widget.serviceLanguage);
+    final data = scheduleDoc.data();
+    if (data == null || !data.containsKey(widget.serviceLanguage)) {
+      setState(() {
+        scheduleMap = {};
+        isUserScheduled = false;
+        isWorshipLeader = false;
+        selectedPracticeTime = null;
+      });
+      return;
+    }
 
-    // 2️⃣ Check if the user is assigned to *any* function
-    bool userIsScheduled = false;
-    for (final entry in teamSchedule.entries) {
-      final members = entry.value;
-      if (members.any((member) => member['uid'] == currentUser.uid)) {
-        userIsScheduled = true;
-        break;
+    final serviceData = data[widget.serviceLanguage] as Map<String, dynamic>;
+    final assignments = serviceData['assignments'] ?? {};
+    final practiceTimeStr = serviceData['practiceTime'] as String?;
+
+    // Build scheduleMap assuming all assignments are lists
+    final Map<String, List<Map<String, dynamic>>> teamSchedule = {};
+
+    for (final function in ScheduleUtils.functionOrder) {
+      final assignmentList = assignments[function];
+      if (assignmentList is List) {
+        teamSchedule[function] = assignmentList
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } else {
+        teamSchedule[function] = [];
       }
     }
 
-    // 3️⃣ By default, Worship Leader is false unless user is scheduled
-    bool userIsWorshipLeader = false;
-    if (userIsScheduled) {
-      final worshipLeaders = teamSchedule['Worship Leader'] ?? [];
-      userIsWorshipLeader =
-          worshipLeaders.any((member) => member['uid'] == currentUser.uid);
-    }
+    // Check if current user is in any assignment
+    bool userIsScheduled = teamSchedule.values.expand((v) => v).any((member) {
+      return member['uid'] == currentUser.uid;
+    });
+
+    // Check specifically for Worship Leader
+    bool userIsWorshipLeader = teamSchedule['Worship Leader']
+            ?.any((member) => member['uid'] == currentUser.uid) ??
+        false;
 
     setState(() {
       scheduleMap = teamSchedule;
       isUserScheduled = userIsScheduled;
       isWorshipLeader = userIsWorshipLeader;
+      selectedPracticeTime =
+          practiceTimeStr != null ? DateTime.tryParse(practiceTimeStr) : null;
     });
   }
 
@@ -407,7 +472,6 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
 
     // 3️⃣ Update only assigned users
     for (final uid in assignedUserUids) {
-      // Get a reference to the specific schedule document for this date
       final scheduleDocRef = FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
@@ -416,23 +480,30 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
 
       final scheduleDocSnapshot = await scheduleDocRef.get();
 
-      // Check if the schedule document for this date exists
       if (scheduleDocSnapshot.exists) {
-        // If it exists, update the 'practiceTime' field within it
         await scheduleDocRef.update({
           'practiceTime': practiceTimeStr,
         });
-        print(
-            'Updated practiceTime for user $uid on $dateKey'); // For debugging
+        print('Updated practiceTime for user $uid on $dateKey');
       } else {
-        // If it doesn't exist, you might want to create it or log an error
-        // Depending on your app logic, if a user is assigned, their schedule document should exist.
-        // If it doesn't, this indicates a data inconsistency.
         print(
-            'Schedule document for user $uid on $dateKey does not exist. Skipping update.'); // For debugging
-        // You could also create the document if it's expected to be created here:
-        // await scheduleDocRef.set({'practiceTime': practiceTimeStr}, SetOptions(merge: true));
+            'Schedule document for user $uid on $dateKey does not exist. Skipping update.');
       }
+    }
+
+    // 4️⃣ NEW: Also update the central schedules/{dateKey} doc
+    if (widget.serviceLanguage != null &&
+        widget.serviceLanguage!.trim().isNotEmpty) {
+      await FirebaseFirestore.instance
+          .collection('schedules')
+          .doc(dateKey)
+          .set({
+        widget.serviceLanguage!: {
+          'practiceTime': practiceTimeStr,
+        }
+      }, SetOptions(merge: true));
+      print(
+          'Updated central schedule for service ${widget.serviceLanguage} on $dateKey');
     }
 
     if (context.mounted) {
@@ -486,15 +557,16 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.notifications, color: colorScheme.primary),
-                  tooltip: 'Notify',
-                  splashRadius: 20,
-                  onPressed: () async {
-                    final message = _generateScheduleMessage();
-                    await WhatsAppHelper.shareWhatsAppGroupMessage(message);
-                  },
-                ),
+                if (isLeaderOrAdmin)
+                  IconButton(
+                    icon: Icon(Icons.notifications, color: colorScheme.primary),
+                    tooltip: 'Notify',
+                    splashRadius: 20,
+                    onPressed: () async {
+                      final message = _generateScheduleMessage();
+                      await WhatsAppHelper.shareWhatsAppGroupMessage(message);
+                    },
+                  ),
               ],
             ),
           ],

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:scheduler_app/widgets/custom_schedule_calendar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class BlockoutCalendarDialog extends StatefulWidget {
   const BlockoutCalendarDialog({super.key});
@@ -17,6 +18,7 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
   Set<DateTime> existingBlockouts = {};
   DateTime focusedDate = DateTime.now();
   late String uid;
+  CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
   void initState() {
@@ -73,9 +75,92 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
       return;
     }
 
+    final firestore = FirebaseFirestore.instance;
+
+    // Get current user functions
+    final userDoc = await firestore.collection('users').doc(uid).get();
+    final userFunctions = List<String>.from(userDoc['functions'] ?? []);
+
+    // To track functions with no backup on certain dates
+    final Map<DateTime, List<String>> functionsWithoutBackup = {};
+
+    for (final date in selectedDates) {
+      final formattedDate = DateFormat('yyyy-MM-dd').format(date);
+
+      final unavailableFunctions = <String>[];
+
+      for (final functionName in userFunctions) {
+        final allUsersSnapshot = await firestore.collection('users').get();
+
+        bool someoneElseAvailable = false;
+
+        for (final doc in allUsersSnapshot.docs) {
+          final otherUid = doc.id;
+          if (otherUid == uid) continue; // skip current user
+
+          final otherUserFunctions = List<String>.from(doc['functions'] ?? []);
+          if (!otherUserFunctions.contains(functionName)) continue;
+
+          final otherScheduleDoc = await firestore
+              .collection('users')
+              .doc(otherUid)
+              .collection('schedules')
+              .doc(formattedDate)
+              .get();
+
+          final isBlockedOut = otherScheduleDoc.data()?['blockout'] == true;
+
+          if (!isBlockedOut) {
+            someoneElseAvailable = true;
+            break;
+          }
+        }
+
+        if (!someoneElseAvailable) {
+          unavailableFunctions.add(functionName);
+        }
+      }
+
+      if (unavailableFunctions.isNotEmpty) {
+        functionsWithoutBackup[date] = unavailableFunctions;
+      }
+    }
+
+    // Show confirmation if any unavailable functions found
+    if (functionsWithoutBackup.isNotEmpty) {
+      final buffer = StringBuffer();
+      functionsWithoutBackup.forEach((date, funcs) {
+        final dateStr = DateFormat('MMM d, yyyy').format(date);
+        buffer.writeln('• $dateStr: ${funcs.join(', ')}');
+      });
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('No Backup Available'),
+          content: Text(
+            'You are the only one available for the following functions on these dates:\n\n${buffer.toString()}\nAre you sure you want to block out?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true) return;
+    }
+
+    // Proceed with blockouts
     await Future.wait(
       selectedDates.map((date) {
-        final docRef = FirebaseFirestore.instance
+        final docRef = firestore
             .collection('users')
             .doc(uid)
             .collection('schedules')
@@ -84,8 +169,10 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
       }),
     );
 
-    await _loadBlockoutDates();
-    await _showAutoDismissDialog('Blockouts saved successfully');
+    if (mounted) {
+      await _loadBlockoutDates();
+      await _showAutoDismissDialog('Blockouts saved successfully');
+    }
   }
 
   Future<void> _removeBlockouts() async {
@@ -170,6 +257,12 @@ class _BlockoutCalendarDialogState extends State<BlockoutCalendarDialog> {
                 width: 400,
                 child: CustomScheduleCalendar(
                   focusedDay: focusedDate,
+                  calendarFormat: _calendarFormat,
+                  onFormatChanged: (newFormat) {
+                    setState(() {
+                      _calendarFormat = newFormat;
+                    });
+                  },
                   onFocusedDayChanged: (newFocused) {
                     setState(() {
                       focusedDate = newFocused;

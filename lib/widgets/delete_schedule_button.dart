@@ -13,6 +13,22 @@ class DeleteScheduleButton extends StatelessWidget {
     required this.serviceLanguage,
   });
 
+  /// Helper to remove the serviceLanguage segment from the central /schedules/{date} document
+  Future<void> deleteServiceFromCentralSchedule({
+    required String formattedDate,
+    required String serviceLanguage,
+  }) async {
+    final docRef =
+        FirebaseFirestore.instance.collection('schedules').doc(formattedDate);
+
+    final snapshot = await docRef.get();
+    if (!snapshot.exists) return;
+
+    await docRef.update({
+      serviceLanguage: FieldValue.delete(),
+    });
+  }
+
   Future<void> _clearScheduleForDate(BuildContext context) async {
     if (date == null) return;
     final formattedDate = DateFormat('yyyy-MM-dd').format(date!);
@@ -21,6 +37,7 @@ class DeleteScheduleButton extends StatelessWidget {
     bool hasAnythingToClear = false;
 
     try {
+      // 1. Clear user-level schedule assignments
       final usersSnapshot =
           await FirebaseFirestore.instance.collection('users').get();
 
@@ -59,31 +76,26 @@ class DeleteScheduleButton extends StatelessWidget {
 
       if (hasAnythingToClear) {
         await batch.commit();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Cleared $serviceLanguage schedule for selected day.',
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.surface,
+      }
+
+      // 2. Always clear the central /schedules collection for that service
+      await deleteServiceFromCentralSchedule(
+        formattedDate: formattedDate,
+        serviceLanguage: serviceLanguage,
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              hasAnythingToClear
+                  ? 'Cleared $serviceLanguage schedule for selected day.'
+                  : '$serviceLanguage schedule removed from central schedule.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
-          );
-        }
-      } else {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'No $serviceLanguage schedule found to clear.',
-                style:
-                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              ),
-              backgroundColor: Theme.of(context).colorScheme.surface,
-            ),
-          );
-        }
+            backgroundColor: Theme.of(context).colorScheme.surface,
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {

@@ -4,12 +4,13 @@ import 'package:scheduler_app/widgets/reusable_schedule_util.dart';
 
 class ScheduleCard extends StatelessWidget {
   final DateTime date;
-  final Future<Map<String, List<Map<String, dynamic>>>> scheduleFuture;
+  final Stream<Map<String, List<Map<String, dynamic>>>> scheduleStream;
   final String? serviceLanguage;
+
   const ScheduleCard({
     super.key,
     required this.date,
-    required this.scheduleFuture,
+    required this.scheduleStream,
     required this.serviceLanguage,
   });
 
@@ -21,23 +22,25 @@ class ScheduleCard extends StatelessWidget {
 
     final formatted = DateFormat('EEE, MMM d').format(date);
 
-    return FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
-      future: scheduleFuture,
+    return StreamBuilder<Map<String, List<Map<String, dynamic>>>>(
+      stream: scheduleStream,
       builder: (context, snapshot) {
         bool hasAssignments = false;
         bool isLoading = snapshot.connectionState == ConnectionState.waiting;
         bool hasError = snapshot.hasError;
 
         if (snapshot.hasData) {
-          final teamStatus = snapshot.data ?? {};
-          hasAssignments = ScheduleUtils.hasAnyFunctionAssigned(teamStatus);
+          final fullSchedule = snapshot.data!;
+          hasAssignments = ScheduleUtils.hasAnyFunctionAssignedForService(
+            fullSchedule,
+            serviceLanguage ?? '',
+          );
         }
 
         // Use theme surface + overlay blend for highlighting
         final baseColor = colorScheme.surface;
-        final highlightColor = hasAssignments
-            ? colorScheme.tertiary.withAlpha(100)
-            : baseColor;
+        final highlightColor =
+            hasAssignments ? colorScheme.tertiary.withAlpha(100) : baseColor;
 
         return GestureDetector(
           onTap: () {

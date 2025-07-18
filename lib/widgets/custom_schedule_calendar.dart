@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 
 class CustomScheduleCalendar extends StatelessWidget {
   final DateTime focusedDay;
@@ -10,11 +11,15 @@ class CustomScheduleCalendar extends StatelessWidget {
   final Map<Color, String>? legendMap;
   final void Function(DateTime)? onDayDoubleTapped;
   final void Function(DateTime)? onFocusedDayChanged;
+  final CalendarFormat calendarFormat;
+  final void Function(CalendarFormat)? onFormatChanged;
 
   const CustomScheduleCalendar({
     super.key,
     required this.focusedDay,
     required this.onDaySelected,
+    required this.calendarFormat,
+    this.onFormatChanged,
     this.selectedDates = const {},
     this.colorHighlights,
     this.showLegend = false,
@@ -43,12 +48,19 @@ class CustomScheduleCalendar extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           child: TableCalendar(
+            calendarFormat: calendarFormat,
+            onFormatChanged: (_) {},
+            shouldFillViewport: false,
             focusedDay: focusedDay,
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
             startingDayOfWeek: StartingDayOfWeek.saturday,
             selectedDayPredicate: (day) {
               return selectedDates.any((d) => _isSameDay(d, day));
+            },
+            availableCalendarFormats: const {
+              CalendarFormat.month: 'Month',
+              CalendarFormat.week: 'Week',
             },
             onDaySelected: (selected, focused) {
               onDaySelected({selected});
@@ -58,11 +70,9 @@ class CustomScheduleCalendar extends StatelessWidget {
             },
             headerStyle: HeaderStyle(
               formatButtonVisible: false,
-              titleTextStyle: TextStyle(color: colorScheme.onSurface),
-              leftChevronIcon:
-                  Icon(Icons.chevron_left, color: colorScheme.onSurface),
-              rightChevronIcon:
-                  Icon(Icons.chevron_right, color: colorScheme.onSurface),
+              titleCentered: true,
+              leftChevronVisible: false,
+              rightChevronVisible: false,
             ),
             daysOfWeekStyle: DaysOfWeekStyle(
               weekdayStyle:
@@ -72,13 +82,16 @@ class CustomScheduleCalendar extends StatelessWidget {
             calendarStyle: CalendarStyle(
               defaultTextStyle: TextStyle(color: colorScheme.onSurface),
               todayDecoration: BoxDecoration(
-                color: Colors.transparent,
                 shape: BoxShape.rectangle,
                 borderRadius: BorderRadius.circular(8),
+                color: Colors.transparent,
                 border: Border.all(
                   color: colorScheme.primary,
-                  width: 2,
+                  width: 3,
                 ),
+              ),
+              todayTextStyle: TextStyle(
+                color: colorScheme.onSurface, // or any other contrast color
               ),
               selectedDecoration: BoxDecoration(
                 color: colorScheme.secondary,
@@ -96,9 +109,70 @@ class CustomScheduleCalendar extends StatelessWidget {
               ),
             ),
             calendarBuilders: CalendarBuilders(
+              headerTitleBuilder: (context, date) {
+                final monthText = DateFormat.yMMMM().format(date);
+                final isWeek = calendarFormat == CalendarFormat.week;
+                final toggleIcon = isWeek
+                    ? Icons.calendar_view_month
+                    : Icons.calendar_view_week;
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Left arrow
+                    IconButton(
+                      icon: Icon(Icons.chevron_left,
+                          color: colorScheme.onSurface),
+                      onPressed: () {
+                        onFocusedDayChanged?.call(
+                          DateTime(date.year, date.month - 1, 1),
+                        );
+                      },
+                    ),
+
+                    // Center title
+                    Text(
+                      monthText,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+
+                    Row(
+                      children: [
+                        // Right arrow
+                        IconButton(
+                          icon: Icon(Icons.chevron_right,
+                              color: colorScheme.onSurface),
+                          onPressed: () {
+                            onFocusedDayChanged?.call(
+                              DateTime(date.year, date.month + 1, 1),
+                            );
+                          },
+                        ),
+
+                        // Toggle button
+                        IconButton(
+                          icon: Icon(toggleIcon, color: colorScheme.primary),
+                          tooltip:
+                              isWeek ? 'Switch to Month' : 'Switch to Week',
+                          onPressed: () {
+                            onFormatChanged!(
+                              isWeek
+                                  ? CalendarFormat.month
+                                  : CalendarFormat.week,
+                            );
+                          },
+                        )
+                      ],
+                    ),
+                  ],
+                );
+              },
               defaultBuilder: (context, day, focused) {
                 final isSelected = selectedDates.any((d) => _isSameDay(d, day));
-                final isToday = _isSameDay(day, DateTime.now());
 
                 Color? highlightColor;
                 if (!isSelected && colorHighlights != null) {
@@ -122,13 +196,7 @@ class CustomScheduleCalendar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   );
                   dayTextStyle = TextStyle(color: colorScheme.onSecondary);
-                } else if (isToday) {
-                  dayDecoration = BoxDecoration(
-                    color: colorScheme.primary,
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(8),
-                  );
-                  dayTextStyle = TextStyle(color: colorScheme.onSurface);
+
                 } else if (highlightColor != null) {
                   dayDecoration = BoxDecoration(
                     color: highlightColor.withAlpha(200),
@@ -152,12 +220,15 @@ class CustomScheduleCalendar extends StatelessWidget {
                 }
 
                 Widget dayWidget = Container(
-                  margin: const EdgeInsets.all(6),
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  margin: const EdgeInsets.all(4),
                   decoration: dayDecoration,
                   alignment: Alignment.center,
                   child: Text(
                     '${day.day}',
                     style: dayTextStyle,
+                    textAlign: TextAlign.center,
                   ),
                 );
 

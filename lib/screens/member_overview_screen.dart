@@ -8,6 +8,7 @@ import 'package:scheduler_app/widgets/schedule_card.dart';
 import 'package:scheduler_app/widgets/appbar.dart';
 import 'package:scheduler_app/widgets/pending_requests_list.dart';
 import 'package:intl/intl.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class MemberDashboardScreen extends StatefulWidget {
   const MemberDashboardScreen({super.key});
@@ -24,14 +25,13 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
   List<DateTime> selectedBlockoutDates = [];
   String? practiceTime;
   List<String> functions = [];
-  late Future<String?> _practiceTimeFuture;
-  final Map<String, Future<Map<String, List<Map<String, dynamic>>>>>
-      _scheduleCache = {};
+  Future<String?>? _practiceTimeFuture;
   String functionforday = '';
   String serviceLanguageforday = '';
 
   List<String> userRoles = [];
   String currentRole = 'Member';
+  CalendarFormat _calendarFormat = CalendarFormat.month;
 
   @override
   void initState() {
@@ -59,16 +59,28 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
   Future<void> _loadMemberCalendarData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+
+    if (uid == null) {
+      setState(() {
+        _practiceTimeFuture = Future.value('Not set');
+        scheduledDates = [];
+      });
+      return;
+    }
 
     final blockouts = await ScheduleUtils.loadBlockoutDatesForUser(uid);
-    final practices = await ScheduleUtils.fetchPracticeTimeForWeek(uid);
+    final practiceTime = await ScheduleUtils.fetchPracticeTimeForWeek(uid);
 
     setState(() {
       selectedBlockoutDates = blockouts;
-      _practiceTimeFuture = Future.value(practices);
-      if (practices != null) {
-        scheduledDates = [DateTime.parse(practices)];
+      _practiceTimeFuture = Future.value(practiceTime ?? 'Not set');
+
+      if (practiceTime != null && practiceTime.isNotEmpty) {
+        try {
+          scheduledDates = [DateTime.parse(practiceTime)];
+        } catch (e) {
+          scheduledDates = [];
+        }
       } else {
         scheduledDates = [];
       }
@@ -130,22 +142,6 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
     final data = docSnapshot.data();
     return data?['service'] as String?;
-  }
-
-  Future<Map<String, List<Map<String, dynamic>>>> _getScheduleForDate(
-    DateTime date,
-    String? service,
-  ) {
-    final cleanDate = _cleanDate(date);
-    final cacheKey = service != null
-        ? '${cleanDate.toIso8601String()}|$service'
-        : '${cleanDate.toIso8601String()}|ALL';
-
-    if (!_scheduleCache.containsKey(cacheKey)) {
-      _scheduleCache[cacheKey] =
-          ScheduleUtils.fetchTeamStatusForDate(cleanDate, service);
-    }
-    return _scheduleCache[cacheKey]!;
   }
 
   String formatPracticeTime(String raw) {
@@ -233,8 +229,9 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
 
                           return ScheduleCard(
                             date: cleanDate,
-                            scheduleFuture:
-                                _getScheduleForDate(cleanDate, serviceLanguage),
+                            scheduleStream:
+                                ScheduleUtils.getScheduleStreamForDate(
+                                    cleanDate, serviceLanguage),
                             serviceLanguage: serviceLanguage,
                           );
                         },
@@ -291,7 +288,8 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                             return Text(
                               'Loading practice time...',
                               style: TextStyle(
-                                  color: colorScheme.onSurface.withAlpha(178)),
+                                color: colorScheme.onSurface.withAlpha(178),
+                              ),
                             );
                           }
 
@@ -361,6 +359,12 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                 const SizedBox(height: 12),
                 CustomScheduleCalendar(
                   focusedDay: _calendarFocusedDay,
+                  calendarFormat: _calendarFormat,
+                  onFormatChanged: (newFormat) {
+                    setState(() {
+                      _calendarFormat = newFormat;
+                    });
+                  },
                   selectedDates: const {},
                   onDaySelected: (_) {},
                   colorHighlights: {
