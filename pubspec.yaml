@@ -1,4 +1,4 @@
-name: altarify
+name: scheduler_app
 description: A scheduling app for team availability
 
 publish_to: 'none'
