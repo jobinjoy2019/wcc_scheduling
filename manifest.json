@@ -1,6 +1,6 @@
 {
-    "name": "scheduler_app",
-    "short_name": "scheduler_app",
+    "name": "Altarify",
+    "short_name": "Altarify",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
