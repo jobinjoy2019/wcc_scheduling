@@ -50,6 +50,7 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
     _checkRoles();
     _loadAllUserBlockouts();
     _loadScheduledPracticeDates();
+    _loadInitialPracticeTime();
   }
 
   @override
@@ -77,15 +78,46 @@ class _LeaderDashboardScreenState extends State<LeaderDashboardScreen> {
   }
 
   Future<void> _loadInitialPracticeTime() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-
-    final practiceTime = await ScheduleUtils.fetchPracticeTimeForWeek(uid);
-
-    if (mounted) {
+    if (_firstScheduleCardDate == null || selectedService.isEmpty) {
       setState(() {
-        _practiceTimeFuture = Future.value(practiceTime ?? 'Not set');
+        _practiceTimeFuture = Future.value(null);
+        worshipLeaderPhoneNumber = null;
       });
+      return;
+    }
+
+    try {
+      final uid =
+          await _findWorshipLeaderUid(_firstScheduleCardDate!, selectedService);
+
+      if (uid != null) {
+        final practiceTime = await ScheduleUtils.fetchPracticeTimeForWeek(uid);
+        final leaderDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        final phoneNumber = leaderDoc.data()?['mobile'] as String?;
+
+        if (mounted) {
+          setState(() {
+            _practiceTimeFuture = Future.value(practiceTime ?? 'Not set');
+            worshipLeaderPhoneNumber = phoneNumber ?? '';
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _practiceTimeFuture = Future.value('Not set');
+            worshipLeaderPhoneNumber = null;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading practice time or leader phone number: $e');
+      if (mounted) {
+        setState(() {
+          _practiceTimeFuture = Future.value('Not set');
+          worshipLeaderPhoneNumber = null;
+        });
+      }
     }
   }
 

@@ -349,7 +349,7 @@ class _MemberDashboardScreenState extends State<MemberDashboardScreen> {
                       label: const Text('Manage Blockout'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.primary,
-                        foregroundColor: colorScheme.onPrimary,
+                        foregroundColor: colorScheme.onSurface,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
                       ),

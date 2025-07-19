@@ -279,15 +279,28 @@ class _ScheduleDetailsDialogState extends State<ScheduleDetailsDialog> {
 
   void _checkUserRole() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    if (uid == null) {
+      print('❌ No current user');
+      return;
+    }
 
     final userDoc =
         await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final role =
-        userDoc.data()?['role']; // assume role = 'member', 'leader', or 'admin'
+
+    if (!userDoc.exists) {
+      print('❌ User document not found for UID: $uid');
+      return;
+    }
+
+    final data = userDoc.data();
+    final role = data?['roles'];
+
+    print('👤 UID: $uid');
+    print('📝 Role from Firestore: $role');
 
     setState(() {
-      isLeaderOrAdmin = role == 'leader' || role == 'admin';
+      isLeaderOrAdmin = role.contains('Leader') || role.contains('Admin');
+      print('✅ isLeaderOrAdmin set to: $isLeaderOrAdmin');
     });
   }
 
